@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, AlertCircle } from 'lucide-react';
-import { authorizedAdmins } from '../data/tourismData';
+import { X, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { loginAdminApi } from '../services/api';
 
 export default function LoginModal({
   isOpen,
@@ -12,26 +12,27 @@ export default function LoginModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (userRole === 'admin') {
-      // Check against the 2 authorized pre-configured admins
-      const matchedAdmin = authorizedAdmins.find(
-        (admin) => admin.email.toLowerCase() === email.trim().toLowerCase() && admin.password === password
-      );
-
-      if (matchedAdmin) {
-        onAdminLoginSuccess(matchedAdmin);
+      try {
+        setIsLoading(true);
+        // Call MongoDB backend to verify admin credentials & receive JWT token
+        const data = await loginAdminApi(email, password);
+        onAdminLoginSuccess(data);
         onClose();
         setEmail('');
         setPassword('');
-      } else {
-        setErrorMsg('Invalid Credentials. Access restricted to authorized admins only.');
+      } catch (err) {
+        setErrorMsg(err.message || 'Invalid credentials or unauthorized account.');
+      } finally {
+        setIsLoading(false);
       }
     } else {
       // Regular traveler login
@@ -97,7 +98,7 @@ export default function LoginModal({
         {userRole === 'admin' && (
           <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
             <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Pre-authorized municipal admin credentials required.</span>
+            <span>Real-time verification against MongoDB Atlas.</span>
           </div>
         )}
 
@@ -128,9 +129,17 @@ export default function LoginModal({
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs tracking-wider uppercase shadow-lg shadow-amber-500/25 transition duration-200"
+            disabled={isLoading}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs tracking-wider uppercase shadow-lg shadow-amber-500/25 transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            Log In as {userRole === 'admin' ? 'Admin' : 'Traveler'}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Verifying...</span>
+              </>
+            ) : (
+              <span>Log In as {userRole === 'admin' ? 'Admin' : 'Traveler'}</span>
+            )}
           </button>
         </form>
 
