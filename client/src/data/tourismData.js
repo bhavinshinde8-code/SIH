@@ -165,21 +165,3 @@ export const features = [
   }
 ];
 
-// 2 Pre-authorized Admin accounts (No registration needed / public signup disabled)
-export const authorizedAdmins = [
-  {
-    id: 'admin-1',
-    name: 'Municipal Admin 1',
-    email: 'admin1@tourism.in',
-    password: 'admin@password123',
-    role: 'admin'
-  },
-  {
-    id: 'admin-2',
-    name: 'Municipal Admin 2',
-    email: 'admin2@tourism.in',
-    password: 'admin@password123',
-    role: 'admin'
-  }
-];
-
