@@ -6,9 +6,11 @@ import FeaturesSection from './components/FeaturesSection';
 import PlaceDetailModal from './components/PlaceDetailModal';
 import LoginModal from './components/LoginModal';
 import AdminDashboard from './components/AdminDashboard';
+import UserDashboard from './components/UserDashboard';
 import Footer from './components/Footer';
 
 import { features, heroSlides, nashikPlaces } from './data/tourismData';
+import { searchTouristDestinations } from './data/indiaWebPlaces';
 import {
   fetchPlacesApi,
   createPlaceApi,
@@ -23,7 +25,8 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [userRole, setUserRole] = useState('traveler');
   const [currentAdmin, setCurrentAdmin] = useState(null);
-  const [activeView, setActiveView] = useState('home');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeView, setActiveView] = useState('home'); // 'home' | 'admin' | 'user'
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Load places live from MongoDB on startup
@@ -41,7 +44,7 @@ export default function App() {
     loadPlaces();
   }, []);
 
-  // Check for stored admin session
+  // Check for stored admin & user session
   useEffect(() => {
     const storedAdmin = localStorage.getItem('sih_admin_session');
     if (storedAdmin) {
@@ -49,6 +52,15 @@ export default function App() {
         setCurrentAdmin(JSON.parse(storedAdmin));
       } catch (e) {
         localStorage.removeItem('sih_admin_session');
+      }
+    }
+
+    const storedUser = localStorage.getItem('sih_user_session');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('sih_user_session');
       }
     }
   }, []);
@@ -61,14 +73,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter places based on Search text
-  const filteredPlaces = placesList.filter((place) => {
-    return (
-      place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      place.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      place.tag.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
+  // Filter places based on Search text with smart fuzzy & spell alias matching
+  const filteredPlaces = searchQuery.trim()
+    ? searchTouristDestinations(searchQuery, placesList)
+    : placesList;
+
 
   // Admin CRUD Handlers communicating with MongoDB API
   const handleAddPlace = async (newPlaceData) => {
@@ -91,15 +100,28 @@ export default function App() {
     setPlacesList((prev) => prev.filter((p) => (p._id || p.id) !== placeId));
   };
 
+  // Auth Success Handlers
   const handleAdminLoginSuccess = (adminData) => {
     setCurrentAdmin(adminData);
     localStorage.setItem('sih_admin_session', JSON.stringify(adminData));
     setActiveView('admin');
   };
 
-  const handleLogout = () => {
+  const handleUserLoginSuccess = (userData) => {
+    setCurrentUser(userData);
+    localStorage.setItem('sih_user_session', JSON.stringify(userData));
+    setActiveView('user');
+  };
+
+  const handleAdminLogout = () => {
     setCurrentAdmin(null);
     localStorage.removeItem('sih_admin_session');
+    setActiveView('home');
+  };
+
+  const handleUserLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('sih_user_session');
     setActiveView('home');
   };
 
@@ -109,25 +131,43 @@ export default function App() {
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        placesList={placesList}
+        onSelectPlace={(place) => setSelectedPlace(place)}
         onLoginClick={() => {
           setUserRole('traveler');
           setIsLoginModalOpen(true);
         }}
         currentAdmin={currentAdmin}
+        currentUser={currentUser}
         activeView={activeView}
         setActiveView={setActiveView}
-        onLogout={handleLogout}
+        onAdminLogout={handleAdminLogout}
+        onUserLogout={handleUserLogout}
       />
 
-      {/* View Switch: Admin Dashboard vs Main Website */}
-      {activeView === 'admin' && currentAdmin ? (
+      {/* View Switch: Admin Dashboard vs User Dashboard vs Main Website */}
+      {activeView === 'admin' ? (
         <AdminDashboard
           places={placesList}
           onAddPlace={handleAddPlace}
           onUpdatePlace={handleUpdatePlace}
           onDeletePlace={handleDeletePlace}
-          onLogout={handleLogout}
-          adminUser={currentAdmin}
+          onLogout={() => {
+            if (currentAdmin) handleAdminLogout();
+            else setActiveView('home');
+          }}
+          adminUser={currentAdmin || { name: 'Super Admin', email: 'admin1@tourism.in', department: 'Nashik Municipal Tourism Board' }}
+        />
+      ) : activeView === 'user' ? (
+        <UserDashboard
+          currentUser={currentUser || { name: 'Bhavin Shinde', email: 'traveler@tourism.in', phone: '9579039845' }}
+          places={placesList}
+          onLogout={() => {
+            if (currentUser) handleUserLogout();
+            else setActiveView('home');
+          }}
+          onExploreDestinations={() => setActiveView('home')}
+          onSelectPlace={(place) => setSelectedPlace(place)}
         />
       ) : (
         <>
@@ -167,13 +207,14 @@ export default function App() {
         </>
       )}
 
-      {/* 7. Auth / Role Modal (Connected to MongoDB) */}
+      {/* 7. Auth / Role Modal (Connected to MongoDB with SMS OTP) */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         userRole={userRole}
         setUserRole={setUserRole}
         onAdminLoginSuccess={handleAdminLoginSuccess}
+        onUserLoginSuccess={handleUserLoginSuccess}
       />
     </div>
   );

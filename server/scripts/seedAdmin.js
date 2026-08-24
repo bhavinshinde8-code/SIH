@@ -31,16 +31,23 @@ const createAdminInteractively = async () => {
       process.exit(1);
     }
 
-    const existingAdmin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    const targetEmail = email.toLowerCase().trim();
+
+    // Check if admin exists to update instead of erroring out
+    const existingAdmin = await Admin.findOne({ email: targetEmail });
     if (existingAdmin) {
-      console.log(`⚠️ Admin with email "${email}" already exists in MongoDB.`);
+      console.log(`\nℹ️ Admin "${targetEmail}" already exists. Updating password...`);
+      existingAdmin.name = name || existingAdmin.name;
+      existingAdmin.password = password; // pre-save hook will encrypt this password
+      await existingAdmin.save();
+      console.log(`✨ Admin "${targetEmail}" password updated and encrypted successfully in MongoDB!`);
     } else {
       await Admin.create({
         name: name || 'Municipal Admin',
-        email: email.toLowerCase().trim(),
-        password: password,
+        email: targetEmail,
+        password: password, // pre-save hook will encrypt this password
       });
-      console.log(`\n✨ Admin "${email}" created & encrypted into MongoDB successfully!`);
+      console.log(`\n✨ Admin "${targetEmail}" created & encrypted into MongoDB successfully!`);
     }
 
     rl.close();

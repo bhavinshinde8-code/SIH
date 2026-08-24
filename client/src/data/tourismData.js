@@ -59,7 +59,9 @@ export const nashikPlaces = [
     description: 'One of the twelve sacred Jyotirlingas, nestled at the foothills of Brahmagiri mountain, famous for origin of River Godavari and black stone architecture built by Peshwa Balaji Baji Rao.',
     bestTime: 'Oct - Mar',
     host: 'Nashik Heritage Guides',
-    highlights: ['12 Jyotirlingas', 'Brahmagiri Hill Origin', 'Kushavarta Kund', 'Hemadpanthi Architecture']
+    highlights: ['12 Jyotirlingas', 'Brahmagiri Hill Origin', 'Kushavarta Kund', 'Hemadpanthi Architecture'],
+    webUrl: 'https://en.wikipedia.org/wiki/Trimbakeshwar_Shiva_Temple',
+    aliases: ['trimbak', 'trimbkeshwar', 'trimkeshwar', 'tryambakeshwar', 'tri', 'shiv', 'shiva', 'jyotirlinga']
   },
   {
     id: 'saptashrungi',
@@ -73,7 +75,9 @@ export const nashikPlaces = [
     description: 'A revered Shakti Peetha surrounded by seven mountain peaks (Saptashringa). Home to the 10-foot tall idol of Goddess Saptashrungi Nivasini with 18 arms holding divine weapons.',
     bestTime: 'Sept - April',
     host: 'Saptashrungi Shrine Board',
-    highlights: ['51 Shakti Peethas', 'Funicular Trolley Ride', '7 Mountain Pinnacles', 'Chaitra Navratri Festival']
+    highlights: ['51 Shakti Peethas', 'Funicular Trolley Ride', '7 Mountain Pinnacles', 'Chaitra Navratri Festival'],
+    webUrl: 'https://en.wikipedia.org/wiki/Saptashrungi',
+    aliases: ['saptashringi', 'saptashrung', 'vani devi', 'gad', 'shakti peeth']
   },
   {
     id: 'harihar',
@@ -87,7 +91,9 @@ export const nashikPlaces = [
     description: 'Renowned worldwide for its thrilling nearly 80-degree vertical stone-cut stairs carved directly into the prism rock face, offering panoramic views of the Sahyadris.',
     bestTime: 'Oct - Feb',
     host: 'Sahyadri Trekkers Club',
-    highlights: ['Vertical Rock Steps', '360° Sahyadri Vista', 'Storage Cisterns', 'Historical Bastions']
+    highlights: ['Vertical Rock Steps', '360° Sahyadri Vista', 'Storage Cisterns', 'Historical Bastions'],
+    webUrl: 'https://en.wikipedia.org/wiki/Harihar_fort',
+    aliases: ['harishgad', 'harihar trek', 'vertical stairs', 'fort', 'trek']
   },
   {
     id: 'pandavleni',
@@ -101,7 +107,9 @@ export const nashikPlaces = [
     description: 'A group of 24 rock-cut caves carved between the 2nd century BCE and 5th century CE, depicting Hinayana Buddhist architecture, intricate viharas, and inscriptions.',
     bestTime: 'July - Feb',
     host: 'Sahyadri History Guild',
-    highlights: ['Ancient Water Cisterns', 'Panoramic City View', 'Intricate Carvings', 'Buddhist Stupas']
+    highlights: ['Ancient Water Cisterns', 'Panoramic City View', 'Intricate Carvings', 'Buddhist Stupas'],
+    webUrl: 'https://en.wikipedia.org/wiki/Pandavleni_Caves',
+    aliases: ['trirashmi caves', 'pandav leni', 'nashik caves', 'tri', 'caves', 'buddhist']
   },
   {
     id: 'anjeneri',
@@ -115,7 +123,9 @@ export const nashikPlaces = [
     description: 'Believed to be the holy birthplace of Lord Hanuman. A scenic trek through Sahyadri ranges with breathtaking cliff views, Jain temples, and reverse waterfall phenomenon in monsoons.',
     bestTime: 'June - Jan',
     host: 'Adventure Nashik Hosts',
-    highlights: ['Hanuman Temple at Summit', 'Scenic Sahyadri Trek', 'Monsoon Waterfalls', 'Jain Cave Temples']
+    highlights: ['Hanuman Temple at Summit', 'Scenic Sahyadri Trek', 'Monsoon Waterfalls', 'Jain Cave Temples'],
+    webUrl: 'https://en.wikipedia.org/wiki/Anjaneri',
+    aliases: ['hanuman birthplace', 'anjaneri hill', 'anjani', 'fort', 'trek']
   },
   {
     id: 'panchavati',
@@ -129,7 +139,9 @@ export const nashikPlaces = [
     description: 'The legendary place where Lord Rama, Sita, and Lakshmana stayed during their exile. Includes the sacred 5 Banyan trees, Kalaram Temple, and holy Ramkund ghat.',
     bestTime: 'Year-round',
     host: 'Panchavati Pilgrim Trust',
-    highlights: ['5 Sacred Banyan Trees', 'Kalaram Temple', 'Ramkund Ghat', 'Sita Gumpha']
+    highlights: ['5 Sacred Banyan Trees', 'Kalaram Temple', 'Ramkund Ghat', 'Sita Gumpha'],
+    webUrl: 'https://en.wikipedia.org/wiki/Panchavati',
+    aliases: ['ramkund', 'kalaram', 'sita gupha', 'sita gumpha', 'ramayana', 'temple']
   },
   {
     id: 'gangapur-wildlife',
@@ -143,7 +155,9 @@ export const nashikPlaces = [
     description: 'Expansive serene waters and grasslands attracting flamingos, painted storks, kingfishers, and diverse flora. Perfect for tranquil sunsets and bird watching expeditions.',
     bestTime: 'Nov - Mar',
     host: 'Nashik Eco Tourism',
-    highlights: ['Bird Watching', 'Sunset Viewpoint', 'Water Sports Complex', 'Vineyard Landscapes']
+    highlights: ['Bird Watching', 'Sunset Viewpoint', 'Water Sports Complex', 'Vineyard Landscapes'],
+    webUrl: 'https://en.wikipedia.org/wiki/Gangapur_Dam',
+    aliases: ['gangapur dam', 'nashik backwaters', 'sula backwaters', 'dam', 'wildlife']
   }
 ];
 

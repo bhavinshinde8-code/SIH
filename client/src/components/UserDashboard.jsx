@@ -1,0 +1,808 @@
+import React, { useState } from 'react';
+import {
+  Search,
+  QrCode,
+  History,
+  BookOpen,
+  Award,
+  PhoneCall,
+  User,
+  Compass,
+  ArrowRight,
+  Sparkles,
+  Camera,
+  CheckCircle2,
+  ExternalLink,
+  MapPin,
+  Clock,
+  Gift,
+  HelpCircle,
+  ChevronRight,
+  ShieldCheck,
+  LogOut,
+  Mail,
+  Smartphone,
+  Headphones,
+  BellRing,
+  Menu
+} from 'lucide-react';
+
+export default function UserDashboard({
+  currentUser,
+  onLogout,
+  onExploreDestinations,
+  onSelectPlace,
+  places = []
+}) {
+  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'history' | 'guide' | 'rewards' | 'contact'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(true); // Dropdown accordion state
+
+  // Mock travel history / visited places
+  const [travelHistory, setTravelHistory] = useState([
+    {
+      id: 'h1',
+      title: 'Trimbakeshwar Shiva Jyotirlinga Temple',
+      date: 'Today, 10:45 AM',
+      points: '+50 pts',
+      category: 'Spiritual',
+      status: 'Verified via QR'
+    },
+    {
+      id: 'h2',
+      title: 'Panchavati & Sita Gufa',
+      date: 'Yesterday, 04:20 PM',
+      points: '+40 pts',
+      category: 'Heritage',
+      status: 'Visited'
+    },
+    {
+      id: 'h3',
+      title: 'Sula Vineyards Tour & Wine Tasting',
+      date: '18 Aug 2026',
+      points: '+75 pts',
+      category: 'Agri-Tourism',
+      status: 'Visited'
+    }
+  ]);
+
+  // Mock rewards
+  const rewardsList = [
+    {
+      title: 'Free Audio Guide Pass',
+      badge: 'Spiritual Tier',
+      pointsReq: '100 pts',
+      unlocked: true,
+      desc: 'Free multi-language audio commentary across all Nashik temple circuits.'
+    },
+    {
+      title: 'Sula Vineyard 15% Tasting Discount',
+      badge: 'Agri Tour Tier',
+      pointsReq: '250 pts',
+      unlocked: true,
+      desc: 'Instant discount on wine tasting sessions at Sula & York Vineyards.'
+    },
+    {
+      title: 'Heritage Monolith Fast-Track Entry',
+      badge: 'Explorer Tier',
+      pointsReq: '500 pts',
+      unlocked: false,
+      desc: 'Priority queue admission at Pandavleni Buddhist Caves & Museum.'
+    }
+  ];
+
+  // User Guide Articles
+  const guideArticles = [
+    {
+      title: 'How to use "Tap to Scan" QR at Tourism Sites',
+      summary: 'Scan monument QR boards placed at entrance gates of Nashik heritage places to get instant audio guide, AR view & earn tourist reward points.'
+    },
+    {
+      title: 'Kumbh Mela & Godavari Ghat Walking Route',
+      summary: 'Recommended morning walking route starting from Ramkund towards Kapaleshwar & Sita Gufa with optimal photo spots.'
+    },
+    {
+      title: 'Trekking Brahmagiri & Anjaneri Safety Guide',
+      summary: 'Essential monsoon safety checklist, recommended shoes, emergency helpline numbers, and sunrise timing.'
+    }
+  ];
+
+  // Filter places for search bar
+  const searchedPlaces = places.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.tag.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSimulateScan = () => {
+    setIsScanning(true);
+    setScanResult(null);
+
+    setTimeout(() => {
+      setIsScanning(false);
+      const randomPlace = places.length > 0 ? places[Math.floor(Math.random() * places.length)] : null;
+      setScanResult({
+        placeName: randomPlace ? randomPlace.name : 'Trimbakeshwar Temple QR Check-in',
+        location: randomPlace ? randomPlace.location : 'Nashik, Maharashtra',
+        pointsEarned: 50,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      // Add to history
+      if (randomPlace) {
+        setTravelHistory((prev) => [
+          {
+            id: 'h_' + Date.now(),
+            title: randomPlace.name,
+            date: 'Just now',
+            points: '+50 pts',
+            category: randomPlace.tag,
+            status: 'Verified via QR'
+          },
+          ...prev
+        ]);
+      }
+    }, 1600);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Top Header Card with Greeting & Live Search Bar */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          {/* Subtle Background Glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+            {/* User Greeting */}
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Traveler Dashboard</span>
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight flex flex-wrap items-center gap-2">
+                <span>Hi,</span>
+                <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+                  @{currentUser?.name || 'Traveler'}
+                </span>
+                <span className="text-xl sm:text-2xl text-slate-400 font-normal">ready to explore?</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-xl">
+                Welcome to your smart Maharashtra tourism hub. Scan monument QRs, collect reward points, explore offline guides, and plan visits.
+              </p>
+            </div>
+
+            {/* Live Search Bar */}
+            <div className="w-full lg:w-96 space-y-2">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Search Destinations
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search temples, forts, caves, vineyards..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-950/90 border border-slate-700/80 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 shadow-inner transition"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Search Dropdown / Live Results */}
+          {searchQuery && (
+            <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {searchedPlaces.slice(0, 3).map((place) => (
+                <div
+                  key={place._id || place.id}
+                  onClick={() => onSelectPlace && onSelectPlace(place)}
+                  className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-amber-400/50 cursor-pointer transition flex items-center gap-3"
+                >
+                  <img
+                    src={place.image}
+                    alt={place.name}
+                    className="w-12 h-12 rounded-xl object-cover"
+                  />
+                  <div className="overflow-hidden">
+                    <h4 className="text-xs font-bold text-white truncate">{place.name}</h4>
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span className="truncate">{place.location}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Main Grid: Left Tabs / Menu & Right Content Area (Exact Layout from Sketch) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* LEFT MENU (Dropdown Format) */}
+          <div className="lg:col-span-4 space-y-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-3 shadow-xl space-y-2">
+              
+              {/* Dropdown Header Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 transition text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <Menu className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                      Menu Options Dropdown
+                    </p>
+                    <p className="text-xs font-bold text-white flex items-center gap-1.5 capitalize">
+                      <span>Active: {activeTab === 'scan' ? 'Tap to Scan' : activeTab === 'guide' ? 'User Guide' : activeTab}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className={`p-1.5 rounded-lg bg-slate-900 text-slate-400 transition-transform duration-200 ${isMenuDropdownOpen ? 'rotate-180 text-amber-400' : ''}`}>
+                  <ChevronRight className="w-4 h-4 rotate-90" />
+                </div>
+              </button>
+
+              {/* Dropdown Menu Items List */}
+              {isMenuDropdownOpen && (
+                <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* 1. Tap to Scan / QR Scanner Tab */}
+                  <button
+                    onClick={() => setActiveTab('scan')}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-200 ${
+                      activeTab === 'scan'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <QrCode className="w-5 h-5" />
+                      <span>Tap to Scan / Scan Me</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-70" />
+                  </button>
+
+                  {/* 2. History */}
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-200 ${
+                      activeTab === 'history'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <History className="w-5 h-5" />
+                      <span>History</span>
+                    </div>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-950/60 font-mono">
+                      {travelHistory.length}
+                    </span>
+                  </button>
+
+                  {/* 3. User Guide */}
+                  <button
+                    onClick={() => setActiveTab('guide')}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-200 ${
+                      activeTab === 'guide'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-5 h-5" />
+                      <span>User Guide</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-70" />
+                  </button>
+
+                  {/* 4. Rewards */}
+                  <button
+                    onClick={() => setActiveTab('rewards')}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-200 ${
+                      activeTab === 'rewards'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Award className="w-5 h-5" />
+                      <span>Rewards</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                      165 Pts
+                    </span>
+                  </button>
+
+                  {/* 5. Contact Us */}
+                  <button
+                    onClick={() => setActiveTab('contact')}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-200 ${
+                      activeTab === 'contact'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <PhoneCall className="w-5 h-5" />
+                      <span>Contact Us</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-70" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Right Box on Sketch: User Info Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 flex items-center justify-center font-black text-lg">
+                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>{currentUser?.name || 'Verified Traveler'}</span>
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  </h3>
+                  <p className="text-xs text-slate-400">{currentUser?.email || 'traveler@tourism.in'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-800/80 text-xs text-slate-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-slate-500" />
+                    Mobile Phone
+                  </span>
+                  <span className="font-mono font-medium">+91 {currentUser?.phone || '9579039845'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    SMS Verification
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold text-[11px]">
+                    Verified
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    Explorer Points
+                  </span>
+                  <span className="font-bold text-amber-400">165 Pts</span>
+                </div>
+              </div>
+
+              <button
+                onClick={onLogout}
+                className="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out of Traveler Account</span>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT PANEL (Main Dynamic Area based on Sketch) */}
+          <div className="lg:col-span-8 space-y-6">
+
+            {/* TAB 1: TAP TO SCAN / SCAN ME (Centerpiece of the sketch) */}
+            {activeTab === 'scan' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 text-center relative overflow-hidden">
+                <div className="space-y-2 max-w-md mx-auto">
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    Tap to Scan Monument QR
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400">
+                    Scan the official QR code at any Nashik monument, temple or museum to verify your visit & claim reward points.
+                  </p>
+                </div>
+
+                {/* Big Circular QR Scanner Target from the Sketch */}
+                <div className="flex flex-col items-center justify-center py-4">
+                  <div className="relative group cursor-pointer" onClick={handleSimulateScan}>
+                    {/* Outer animated radar / ripple ring */}
+                    <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 opacity-30 group-hover:opacity-60 blur-xl transition duration-500 animate-pulse"></div>
+                    
+                    {/* Outer Circle Ring */}
+                    <div className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-slate-950 border-4 border-amber-500/40 group-hover:border-amber-400 flex items-center justify-center p-4 shadow-2xl transition duration-300">
+                      {/* Inner Target Square */}
+                      <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-3xl border-2 border-dashed border-amber-400/80 bg-slate-900/90 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                        {isScanning ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-[11px] font-bold text-amber-400">Scanning...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <QrCode className="w-16 h-16 text-amber-400 group-hover:scale-110 transition duration-300" />
+                            {/* Scanning laser beam animation */}
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-bounce"></div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* "Scan Me" Button & Instruction */}
+                  <div className="mt-6 space-y-3">
+                    <button
+                      onClick={handleSimulateScan}
+                      disabled={isScanning}
+                      className="px-8 py-3.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/25 transition duration-200 hover:scale-105 active:scale-95 disabled:opacity-50"
+                    >
+                      {isScanning ? 'Processing QR Code...' : 'Tap to Scan / Scan Me'}
+                    </button>
+                    <p className="text-[11px] text-slate-500">
+                      Camera QR scanner or instant NFC beacon check-in supported
+                    </p>
+                  </div>
+                </div>
+
+                {/* Scan Result Feedback Card */}
+                {scanResult && (
+                  <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-left max-w-md mx-auto animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{scanResult.placeName}</h4>
+                        <p className="text-xs text-slate-300 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-amber-400" />
+                          <span>{scanResult.location}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-emerald-500/20 flex justify-between items-center text-xs">
+                      <span className="text-emerald-400 font-semibold">Visit Verified at {scanResult.timestamp}</span>
+                      <span className="font-bold text-amber-400">+{scanResult.pointsEarned} Points Added!</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: ITINERARY (My Travel Plan) */}
+            {activeTab === 'itinerary' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Compass className="w-5 h-5 text-amber-400" />
+                      <span>My Planned Nashik Itinerary (2-Day Route)</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Curated smart route with best travel timings & audio guides</p>
+                  </div>
+                  <button
+                    onClick={onExploreDestinations}
+                    className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold hover:bg-amber-500/20 transition self-start sm:self-auto"
+                  >
+                    + Add More Places
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Day 1 */}
+                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+                        Day 1: Spiritual & Heritage Circuit
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">08:00 AM – 06:00 PM</span>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">1</span>
+                          <span className="font-bold text-white">Trimbakeshwar Temple & Kushavarta Kund</span>
+                        </div>
+                        <span className="text-slate-400">08:00 AM</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">2</span>
+                          <span className="font-bold text-white">Brahmagiri Hill Nature Walk</span>
+                        </div>
+                        <span className="text-slate-400">11:30 AM</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">3</span>
+                          <span className="font-bold text-white">Panchavati, Sita Gufa & Ramkund Aarti</span>
+                        </div>
+                        <span className="text-slate-400">04:30 PM</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Day 2 */}
+                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 text-xs font-bold border border-orange-500/20">
+                        Day 2: Vineyards & Scenic Forts
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">09:30 AM – 07:00 PM</span>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-orange-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">1</span>
+                          <span className="font-bold text-white">Pandavleni Caves & Heritage Rock Cut</span>
+                        </div>
+                        <span className="text-slate-400">09:30 AM</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-orange-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">2</span>
+                          <span className="font-bold text-white">Sula Vineyards Wine Tour & Lunch</span>
+                        </div>
+                        <span className="text-slate-400">01:30 PM</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: HISTORY */}
+            {activeTab === 'history' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <History className="w-5 h-5 text-amber-400" />
+                      <span>Travel & QR Check-in History</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Verified visits and points accumulated across Nashik</p>
+                  </div>
+                  <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-bold">
+                    {travelHistory.length} Places Visited
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {travelHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between gap-4 hover:border-slate-700 transition"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{item.title}</h4>
+                          <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                            <span className="text-amber-400/90 font-medium">{item.category}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {item.date}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                          {item.points}
+                        </span>
+                        <p className="text-[10px] text-slate-500 mt-1">{item.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: USER GUIDE */}
+            {activeTab === 'guide' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-amber-400" />
+                    <span>Traveler User Guide & Nashik Manual</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">Everything you need to know about exploring Nashik seamlessly</p>
+                </div>
+
+                <div className="space-y-4">
+                  {guideArticles.map((article, idx) => (
+                    <div
+                      key={idx}
+                      className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 hover:border-amber-500/30 transition"
+                    >
+                      <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-[10px]">
+                          {idx + 1}
+                        </span>
+                        <span>{article.title}</span>
+                      </h4>
+                      <p className="text-xs text-slate-300 leading-relaxed pl-7">
+                        {article.summary}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: SMART AUDIO TOURS & AR GUIDE */}
+            {activeTab === 'audio' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Headphones className="w-5 h-5 text-amber-400" />
+                      <span>Smart Audio Guides & 3D AR Monument Experience</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Listen to historical narrations in English, Hindi & Marathi</p>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold self-start sm:self-auto">
+                    GPS Auto-Detect On
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-bold">
+                        Spiritual Heritage
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">14 Mins Audio</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white">Trimbakeshwar Temple & Kushavarta Tale</h4>
+                    <p className="text-xs text-slate-400">Listen to the story of Sage Gautama, Godavari descent and the ancient Jyotirlinga architecture.</p>
+                    <button className="w-full py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold transition flex items-center justify-center gap-2">
+                      <Headphones className="w-3.5 h-3.5" />
+                      <span>Play Audio Guide (EN / HI / MR)</span>
+                    </button>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 text-[10px] font-bold">
+                        Archaeological Caves
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">18 Mins Audio</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white">Pandavleni 24 Buddhist Rock-Cut Caves</h4>
+                    <p className="text-xs text-slate-400">Discover 2,000-year-old Hinayana Buddhist monasteries, inscriptions and water cisterns.</p>
+                    <button className="w-full py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold transition flex items-center justify-center gap-2">
+                      <Headphones className="w-3.5 h-3.5" />
+                      <span>Play Audio Guide (EN / HI / MR)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: REWARDS */}
+            {activeTab === 'rewards' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Award className="w-5 h-5 text-amber-400" />
+                      <span>Explorer Rewards & Badges</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Earn points by scanning monument QRs and redeem exclusive perks</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-slate-400">Current Balance</p>
+                    <span className="text-lg font-black text-amber-400 font-mono">165 Pts</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {rewardsList.map((reward, i) => (
+                    <div
+                      key={i}
+                      className={`p-5 rounded-2xl border space-y-3 flex flex-col justify-between ${
+                        reward.unlocked
+                          ? 'bg-slate-950 border-amber-500/30'
+                          : 'bg-slate-950/50 border-slate-800 opacity-60'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {reward.badge}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-slate-400">
+                            {reward.pointsReq}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-white">{reward.title}</h4>
+                        <p className="text-xs text-slate-400">{reward.desc}</p>
+                      </div>
+
+                      <button
+                        disabled={!reward.unlocked}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition ${
+                          reward.unlocked
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:brightness-110 shadow'
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {reward.unlocked ? 'Redeem Voucher' : 'Locked (Needs Points)'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: CONTACT US */}
+            {activeTab === 'contact' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <PhoneCall className="w-5 h-5 text-amber-400" />
+                    <span>Nashik Tourism Helpline & Contact Us</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">24x7 Tourist assistance, guide booking & emergency support</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <p className="text-[11px] text-slate-400 font-semibold">Toll-Free Tourist Helpline</p>
+                    <p className="text-base font-black text-amber-400 font-mono">1800-233-7733</p>
+                    <p className="text-[11px] text-slate-500">Available 24x7 in Marathi, Hindi & English</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <p className="text-[11px] text-slate-400 font-semibold">Official Email Desk</p>
+                    <p className="text-sm font-bold text-white">support@nashiktourism.gov.in</p>
+                    <p className="text-[11px] text-slate-500">Response within 2 business hours</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <p className="text-[11px] text-slate-400 font-semibold">District Tourist Facilitation Center</p>
+                    <p className="text-xs font-bold text-white">MTDC Tourist Complex, Old Agra Road, Nashik</p>
+                    <p className="text-[11px] text-slate-500">Open 09:00 AM – 07:00 PM</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <p className="text-[11px] text-slate-400 font-semibold">Police & Emergency Helpline</p>
+                    <p className="text-base font-black text-rose-400 font-mono">112 / 100</p>
+                    <p className="text-[11px] text-slate-500">Immediate emergency assistance</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Explore Nashik Destinations CTA */}
+            <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <h4 className="text-sm font-bold text-white">Want to explore all trending tourist places?</h4>
+                <p className="text-xs text-slate-400">Discover top temples, waterfalls, historic forts & wineries in Nashik.</p>
+              </div>
+              <button
+                onClick={onExploreDestinations}
+                className="px-6 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
+              >
+                <span>Explore Places</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

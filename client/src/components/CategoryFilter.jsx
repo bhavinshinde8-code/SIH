@@ -24,11 +24,10 @@ export default function CategoryFilter({ categories, activeCategory, setActiveCa
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold tracking-wide whitespace-nowrap transition-all duration-200 border ${
-                  isActive
-                    ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold tracking-wide whitespace-nowrap transition-all duration-200 border ${isActive
+                  ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
+                  : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
               >
                 <IconComp className={`w-3.5 h-3.5 ${isActive ? 'text-slate-950' : 'text-amber-400'}`} />
                 <span>{cat.label}</span>

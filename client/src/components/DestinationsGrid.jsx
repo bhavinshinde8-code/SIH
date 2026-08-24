@@ -39,7 +39,7 @@ export default function DestinationsGrid({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {places.map((place) => (
             <div
-              key={place.id}
+              key={place._id || place.id}
               onClick={() => onSelectPlace(place)}
               className="group cursor-pointer rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-amber-500/50 overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between"
             >
