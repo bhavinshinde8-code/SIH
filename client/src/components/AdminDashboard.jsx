@@ -24,7 +24,10 @@ import {
   FileCheck,
   Clock,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Save,
+  Check,
+  Database as DatabaseIcon
 } from 'lucide-react';
 import { fetchAdminUsersApi } from '../services/api';
 
@@ -48,6 +51,8 @@ export default function AdminDashboard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlace, setEditingPlace] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [saveAllSuccess, setSaveAllSuccess] = useState(false);
 
   // Selected Site & Custom Config Data
   const [selectedSite, setSelectedSite] = useState(null);
@@ -82,8 +87,21 @@ export default function AdminDashboard({
     description: '',
     bestTime: '',
     host: 'Nashik Municipal Tourism Board',
-    highlights: ''
+    highlights: '',
+    isTopTrending: true,
+    hiddenHistory: '',
+    historyContent: [],
+    visualTimeline: [],
+    nearbyPlaces: [],
+    coRelatedPlaces: []
   });
+
+  // State for sub-modals / item creators
+  const [openSubSection, setOpenSubSection] = useState(null); // 'history' | 'timeline' | 'nearby' | 'corelated' | null
+  const [historyForm, setHistoryForm] = useState({ language: 'English', mediaType: 'audio', title: '', mediaUrl: '', narrator: '', duration: '' });
+  const [timelineForm, setTimelineForm] = useState({ year: '', title: '', imageUrl: '', description: '' });
+  const [nearbyForm, setNearbyForm] = useState({ name: '', distance: '2.5 km', imageUrl: '', category: 'Heritage' });
+  const [coRelatedForm, setCoRelatedForm] = useState({ name: '', circuit: 'Ramayana Circuit', imageUrl: '', connection: 'Shared pilgrimage & heritage route' });
 
   // Safe Places array fallback
   const safePlaces = Array.isArray(places) ? places : [];
@@ -110,6 +128,7 @@ export default function AdminDashboard({
 
   const handleOpenAdd = () => {
     setEditingPlace(null);
+    setOpenSubSection(null);
     setFormData({
       name: '',
       tag: '',
@@ -120,13 +139,20 @@ export default function AdminDashboard({
       description: '',
       bestTime: '',
       host: 'Nashik Municipal Tourism Board',
-      highlights: ''
+      highlights: '',
+      isTopTrending: true,
+      hiddenHistory: '',
+      historyContent: [],
+      visualTimeline: [],
+      nearbyPlaces: [],
+      coRelatedPlaces: []
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (place) => {
     setEditingPlace(place);
+    setOpenSubSection(null);
     const hl = Array.isArray(place.highlights)
       ? place.highlights.join(', ')
       : typeof place.highlights === 'string'
@@ -143,9 +169,145 @@ export default function AdminDashboard({
       description: place.description || '',
       bestTime: place.bestTime || '',
       host: place.host || 'Nashik Municipal Tourism Board',
-      highlights: hl
+      highlights: hl,
+      isTopTrending: place.isTopTrending !== false,
+      hiddenHistory: place.hiddenHistory || '',
+      historyContent: Array.isArray(place.historyContent) ? place.historyContent : [],
+      visualTimeline: Array.isArray(place.visualTimeline) ? [...place.visualTimeline].sort((a,b) => parseInt(a.year || 0) - parseInt(b.year || 0)) : [],
+      nearbyPlaces: Array.isArray(place.nearbyPlaces) ? place.nearbyPlaces : [],
+      coRelatedPlaces: Array.isArray(place.coRelatedPlaces) ? place.coRelatedPlaces : []
     });
     setIsModalOpen(true);
+  };
+
+  const handleToggleTrending = async (place, e) => {
+    if (e) e.stopPropagation();
+    const newStatus = place.isTopTrending === false ? true : false;
+    try {
+      await onUpdatePlace(place._id || place.id, {
+        ...place,
+        isTopTrending: newStatus
+      });
+    } catch (error) {
+      alert(`Failed to update Top Trending status: ${error.message}`);
+    }
+  };
+
+  // Add Item to History Content
+  const handleAddHistoryContent = () => {
+    if (!historyForm.title.trim()) {
+      alert('Please enter a title for history commentary');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      historyContent: [...(prev.historyContent || []), { ...historyForm }]
+    }));
+    setHistoryForm({ language: 'English', mediaType: 'audio', title: '', mediaUrl: '', narrator: '', duration: '' });
+    setOpenSubSection(null);
+  };
+
+  // Remove History Content Item
+  const handleRemoveHistoryContent = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      historyContent: prev.historyContent.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Add Item to Visual Timeline (sorted by year automatically)
+  const handleAddTimelineItem = () => {
+    if (!timelineForm.year.trim() || !timelineForm.title.trim()) {
+      alert('Please specify at least Year and Title for timeline event');
+      return;
+    }
+    const updated = [...(formData.visualTimeline || []), { ...timelineForm }];
+    updated.sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0));
+    setFormData((prev) => ({
+      ...prev,
+      visualTimeline: updated
+    }));
+    setTimelineForm({ year: '', title: '', imageUrl: '', description: '' });
+    setOpenSubSection(null);
+  };
+
+  // Remove Timeline Item
+  const handleRemoveTimelineItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      visualTimeline: prev.visualTimeline.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Add Nearby Place Item
+  const handleAddNearbyPlace = () => {
+    if (!nearbyForm.name.trim()) {
+      alert('Please specify nearby place name');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      nearbyPlaces: [...(prev.nearbyPlaces || []), { ...nearbyForm }]
+    }));
+    setNearbyForm({ name: '', distance: '2.5 km', imageUrl: '', category: 'Heritage' });
+    setOpenSubSection(null);
+  };
+
+  // Remove Nearby Place
+  const handleRemoveNearbyPlace = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      nearbyPlaces: prev.nearbyPlaces.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Add Co-Related Place
+  const handleAddCoRelatedPlace = () => {
+    if (!coRelatedForm.name.trim()) {
+      alert('Please specify related monument name');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      coRelatedPlaces: [...(prev.coRelatedPlaces || []), { ...coRelatedForm }]
+    }));
+    setCoRelatedForm({ name: '', circuit: 'Ramayana Circuit', imageUrl: '', connection: 'Shared pilgrimage & heritage route' });
+    setOpenSubSection(null);
+  };
+
+  // Remove Co-Related Place
+  const handleRemoveCoRelatedPlace = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      coRelatedPlaces: prev.coRelatedPlaces.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Save / Sync all destinations changes into MongoDB database
+  const handleSaveAllPlaces = async () => {
+    try {
+      setIsSavingAll(true);
+      for (const place of safePlaces) {
+        const placeId = place._id || place.id;
+        if (onUpdatePlace && placeId) {
+          await onUpdatePlace(placeId, {
+            ...place,
+            isTopTrending: place.isTopTrending !== false,
+            nearbyPlaces: place.nearbyPlaces || [],
+            historyContent: place.historyContent || [],
+            visualTimeline: place.visualTimeline || [],
+            coRelatedPlaces: place.coRelatedPlaces || [],
+            hiddenHistory: place.hiddenHistory || ''
+          });
+        }
+      }
+      setSaveAllSuccess(true);
+      setTimeout(() => setSaveAllSuccess(false), 3500);
+    } catch (err) {
+      alert(`Error saving all destination changes to database: ${err.message}`);
+    } finally {
+      setIsSavingAll(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -154,7 +316,9 @@ export default function AdminDashboard({
 
     const formattedData = {
       ...formData,
-      highlights: formData.highlights.split(',').map((h) => h.trim()).filter(Boolean)
+      highlights: typeof formData.highlights === 'string'
+        ? formData.highlights.split(',').map((h) => h.trim()).filter(Boolean)
+        : formData.highlights
     };
 
     try {
@@ -165,7 +329,7 @@ export default function AdminDashboard({
       }
       setIsModalOpen(false);
     } catch (error) {
-      alert(`Error saving place: ${error.message}`);
+      alert(`Error saving place to database: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -507,6 +671,7 @@ export default function AdminDashboard({
                   <div className="space-y-3">
                     {safePlaces.map((place) => {
                       const placeKey = place._id || place.id;
+                      const isTrending = place.isTopTrending !== false;
                       return (
                         <div
                           key={placeKey}
@@ -519,22 +684,91 @@ export default function AdminDashboard({
                               className="w-16 h-16 rounded-xl object-cover bg-slate-800 shrink-0"
                             />
                             <div className="space-y-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-2 py-0.5 rounded-full bg-amber-500/10">
                                   {place.tag}
                                 </span>
                                 <span className="text-xs text-slate-400 flex items-center gap-1">
                                   <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {place.rating}
                                 </span>
+                                {isTrending ? (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-emerald-400" /> Top Trending
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800">
+                                    Hidden from Trending
+                                  </span>
+                                )}
                               </div>
                               <h3 className="text-sm font-bold text-white">{place.name}</h3>
                               <p className="text-xs text-slate-400 flex items-center gap-1">
                                 <MapPin className="w-3 h-3 text-slate-500" /> {place.location}
                               </p>
+
+                              {/* Live Database Data Summary Badges & Previews on Admin Card */}
+                              <div className="space-y-1.5 pt-1.5">
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                  {place.nearbyPlaces?.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold flex items-center gap-1">
+                                      <span>📍</span> {place.nearbyPlaces.length} Nearby Places
+                                    </span>
+                                  )}
+                                  {place.coRelatedPlaces?.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold flex items-center gap-1">
+                                      <span>🔗</span> {place.coRelatedPlaces.length} Circuits
+                                    </span>
+                                  )}
+                                  {place.historyContent?.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-1">
+                                      <span>🎙️</span> {place.historyContent.length} Audio Guides
+                                    </span>
+                                  )}
+                                  {place.visualTimeline?.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold flex items-center gap-1">
+                                      <span>⏳</span> {place.visualTimeline.length} Timeline Eras
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Names preview */}
+                                {place.nearbyPlaces?.length > 0 && (
+                                  <p className="text-[11px] text-slate-400">
+                                    <strong className="text-amber-400/90 font-medium">Nearby Stops:</strong>{' '}
+                                    {place.nearbyPlaces.map(n => `${n.name} (${n.distance})`).join(', ')}
+                                  </p>
+                                )}
+                                {place.coRelatedPlaces?.length > 0 && (
+                                  <p className="text-[11px] text-slate-400">
+                                    <strong className="text-blue-400/90 font-medium">Circuits:</strong>{' '}
+                                    {place.coRelatedPlaces.map(c => `${c.name} - ${c.circuit}`).join(', ')}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 self-end sm:self-center">
+                          <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+                            {/* Fast Toggle Button for Top Trending */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleTrending(place, e)}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                                isTrending
+                                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                              }`}
+                              title={isTrending ? 'Click to unmark from Top Trending' : 'Click to mark as Top Trending'}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isTrending}
+                                onChange={() => {}} // Handled by button onClick
+                                className="w-3.5 h-3.5 rounded text-amber-500 bg-slate-900 border-slate-700 pointer-events-none accent-amber-500"
+                              />
+                              <span>{isTrending ? 'Trending: ON' : 'Trending: OFF'}</span>
+                            </button>
+
                             <button
                               onClick={() => handleOpenEdit(place)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-200 transition"
@@ -557,6 +791,47 @@ export default function AdminDashboard({
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* BOTTOM ACTION BAR: Save All Site Changes to Database */}
+                  <div className="pt-6 mt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-950/60 -mx-6 -mb-6 p-6 rounded-b-3xl">
+                    <div className="space-y-0.5 text-center sm:text-left">
+                      <h4 className="text-xs font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                        <DatabaseIcon className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Sync & Persist All Site Information</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Commit all {safePlaces.length} destination timelines, nearby stops, and audio commentaries across all slides directly to MongoDB Atlas.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {saveAllSuccess && (
+                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <Check className="w-4 h-4" />
+                          <span>All Saved to MongoDB!</span>
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleSaveAllPlaces}
+                        disabled={isSavingAll}
+                        className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2"
+                      >
+                        {isSavingAll ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Saving All to Database...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Save All Site Changes To DB</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -832,6 +1107,26 @@ export default function AdminDashboard({
                 />
               </div>
 
+              {/* Top Trending Destinations Checkbox */}
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <label htmlFor="isTopTrendingCheckbox" className="text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Show in "Top Trending Destinations"</span>
+                  </label>
+                  <p className="text-[11px] text-slate-400">
+                    When checked, this destination appears in the Top Trending Destinations section on the home page. Unchecked destinations are hidden from trending.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="isTopTrendingCheckbox"
+                  checked={formData.isTopTrending}
+                  onChange={(e) => setFormData({ ...formData, isTopTrending: e.target.checked })}
+                  className="w-5 h-5 rounded text-amber-500 bg-slate-950 border-slate-700 focus:ring-0 cursor-pointer accent-amber-500 shrink-0"
+                />
+              </div>
+
               {/* When Editing a specific site, show the extended features inside the Edit dialog */}
               {editingPlace && (
                 <div className="pt-6 mt-6 border-t border-slate-800 space-y-6">
@@ -872,17 +1167,8 @@ export default function AdminDashboard({
                     </label>
                     <textarea
                       rows={3}
-                      value={siteCustomData[editingPlace._id || editingPlace.id]?.hiddenHistory ?? (editingPlace.description || '')}
-                      onChange={(e) => {
-                        const key = editingPlace._id || editingPlace.id;
-                        setSiteCustomData({
-                          ...siteCustomData,
-                          [key]: {
-                            ...(siteCustomData[key] || {}),
-                            hiddenHistory: e.target.value
-                          }
-                        });
-                      }}
+                      value={formData.hiddenHistory}
+                      onChange={(e) => setFormData({ ...formData, hiddenHistory: e.target.value })}
                       placeholder="Enter hidden history and local folklore..."
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-400"
                     />
@@ -900,68 +1186,492 @@ export default function AdminDashboard({
                   </div>
 
                   {/* 4 Feature Action Accordions */}
-                  <div className="space-y-3 pt-2">
-                    {/* 1. History Content */}
-                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <h5 className="text-xs font-bold text-white">History Content (Audio / Video / Text)</h5>
-                        <p className="text-[10px] text-slate-400">Multilingual audio commentaries and narration</p>
+                  <div className="space-y-4 pt-2">
+                    
+                    {/* 1. History Content (Audio / Video / Text) */}
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                            <span>History Content (Audio / Video / Text)</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono">
+                              {formData.historyContent?.length || 0} items
+                            </span>
+                          </h5>
+                          <p className="text-[10px] text-slate-400">Multilingual audio commentaries and narration stored in database</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenSubSection(openSubSection === 'history' ? null : 'history')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center gap-1"
+                        >
+                          {openSubSection === 'history' ? '✕ Close' : '+ Add Commentary'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => alert('Add audio commentary or video')}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
-                      >
-                        + Add
-                      </button>
+
+                      {/* Add History Form */}
+                      {openSubSection === 'history' && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700/80 space-y-3 animate-in fade-in">
+                          <p className="text-xs font-bold text-amber-400">Add New Multilingual Commentary</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Language</label>
+                              <select
+                                value={historyForm.language}
+                                onChange={(e) => setHistoryForm({ ...historyForm, language: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              >
+                                <option value="English">English</option>
+                                <option value="Hindi">Hindi (हिंदी)</option>
+                                <option value="Marathi">Marathi (मराठी)</option>
+                                <option value="Sanskrit">Sanskrit (संस्कृत)</option>
+                                <option value="Tamil">Tamil (தமிழ்)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Type</label>
+                              <select
+                                value={historyForm.mediaType}
+                                onChange={(e) => setHistoryForm({ ...historyForm, mediaType: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              >
+                                <option value="audio">Audio Commentary</option>
+                                <option value="video">Video Documentary</option>
+                                <option value="text">Historical Script</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Duration / Time</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 4 mins 30s"
+                                value={historyForm.duration}
+                                onChange={(e) => setHistoryForm({ ...historyForm, duration: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Narrator / Author</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Pt. Vidyadhar Shastri"
+                                value={historyForm.narrator}
+                                onChange={(e) => setHistoryForm({ ...historyForm, narrator: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Commentary Title</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Origin of River Godavari & Kushavarta"
+                                value={historyForm.title}
+                                onChange={(e) => setHistoryForm({ ...historyForm, title: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Audio / Video Stream URL (or text notes)</label>
+                            <input
+                              type="text"
+                              placeholder="https://... or audio resource URL"
+                              value={historyForm.mediaUrl}
+                              onChange={(e) => setHistoryForm({ ...historyForm, mediaUrl: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setOpenSubSection(null)}
+                              className="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddHistoryContent}
+                              className="px-4 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
+                            >
+                              Add Commentary Item
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Render Existing History Items */}
+                      {formData.historyContent && formData.historyContent.length > 0 && (
+                        <div className="space-y-2 pt-1">
+                          {formData.historyContent.map((item, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-xs">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-white">{item.title}</span>
+                                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold">
+                                    {item.language} • {item.mediaType}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-400">
+                                  {item.narrator ? `Narrator: ${item.narrator}` : ''} {item.duration ? `(${item.duration})` : ''}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveHistoryContent(idx)}
+                                className="text-slate-400 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {/* 2. Visual Timeline */}
-                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
-                      <div className="space-y-0.5">
-                        <h5 className="text-xs font-bold text-white">Visual Timeline (year-by-year slider)</h5>
-                        <p className="text-[10px] text-slate-400">
-                          Give each photo a year — visitors get a drag-to-slide timeline that jumps to the closest photo as they move the pointer. Photos are kept sorted by year automatically.
-                        </p>
+                    {/* 2. Visual Timeline (year-by-year slider) */}
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                            <span>Visual Timeline (year-by-year slider)</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono">
+                              {formData.visualTimeline?.length || 0} milestones
+                            </span>
+                          </h5>
+                          <p className="text-[10px] text-slate-400">
+                            Give each photo a year — visitors get a drag-to-slide timeline that jumps to the closest photo as they move the pointer. Photos are kept sorted by year automatically in MongoDB.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenSubSection(openSubSection === 'timeline' ? null : 'timeline')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shrink-0"
+                        >
+                          {openSubSection === 'timeline' ? '✕ Close' : '+ Add Timeline Era'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => alert('Add historical era photo')}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shrink-0"
-                      >
-                        + Add
-                      </button>
+
+                      {/* Add Timeline Item Form */}
+                      {openSubSection === 'timeline' && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700/80 space-y-3 animate-in fade-in">
+                          <p className="text-xs font-bold text-amber-400">Add Historical Era Photo & Year</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Year / Century (e.g. 1755, 1200 BCE, 1920)</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 1755"
+                                value={timelineForm.year}
+                                onChange={(e) => setTimelineForm({ ...timelineForm, year: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Milestone Title</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Peshwa Balaji Baji Rao Reconstruction"
+                                value={timelineForm.title}
+                                onChange={(e) => setTimelineForm({ ...timelineForm, title: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Historical Photo / Painting URL</label>
+                            <input
+                              type="url"
+                              placeholder="https://..."
+                              value={timelineForm.imageUrl}
+                              onChange={(e) => setTimelineForm({ ...timelineForm, imageUrl: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Era Description</label>
+                            <textarea
+                              rows={2}
+                              placeholder="Describe what occurred during this era..."
+                              value={timelineForm.description}
+                              onChange={(e) => setTimelineForm({ ...timelineForm, description: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setOpenSubSection(null)}
+                              className="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddTimelineItem}
+                              className="px-4 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
+                            >
+                              Add Era Milestone
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Render Visual Timeline Items */}
+                      {formData.visualTimeline && formData.visualTimeline.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          {formData.visualTimeline.map((item, idx) => (
+                            <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-start justify-between gap-3 text-xs">
+                              {item.imageUrl && (
+                                <img src={item.imageUrl} alt={item.title} className="w-12 h-12 rounded-lg object-cover bg-slate-800 shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
+                                    {item.year}
+                                  </span>
+                                  <span className="font-bold text-white truncate">{item.title}</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 line-clamp-2">{item.description}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTimelineItem(idx)}
+                                className="text-slate-400 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {/* 3. Nearby Places */}
-                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <h5 className="text-xs font-bold text-white">Nearby Places To Visit</h5>
-                        <p className="text-[10px] text-slate-400">Recommended stops within 15km</p>
+                    {/* 3. Nearby Places To Visit */}
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                            <span>Nearby Places To Visit</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono">
+                              {formData.nearbyPlaces?.length || 0} places
+                            </span>
+                          </h5>
+                          <p className="text-[10px] text-slate-400">Recommended stops within 15km stored in database</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenSubSection(openSubSection === 'nearby' ? null : 'nearby')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
+                        >
+                          {openSubSection === 'nearby' ? '✕ Close' : '+ Add Nearby Place'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => alert('Add nearby attraction')}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
-                      >
-                        + Add
-                      </button>
+
+                      {/* Add Nearby Place Form */}
+                      {openSubSection === 'nearby' && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700/80 space-y-3 animate-in fade-in">
+                          <p className="text-xs font-bold text-amber-400">Add Nearby Attraction</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Place Name</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Kushavarta Kund"
+                                value={nearbyForm.name}
+                                onChange={(e) => setNearbyForm({ ...nearbyForm, name: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Distance</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 500 meters or 4.2 km"
+                                value={nearbyForm.distance}
+                                onChange={(e) => setNearbyForm({ ...nearbyForm, distance: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Category</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Holy Water Reservoir"
+                                value={nearbyForm.category}
+                                onChange={(e) => setNearbyForm({ ...nearbyForm, category: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Image URL</label>
+                            <input
+                              type="url"
+                              placeholder="https://..."
+                              value={nearbyForm.imageUrl}
+                              onChange={(e) => setNearbyForm({ ...nearbyForm, imageUrl: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setOpenSubSection(null)}
+                              className="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddNearbyPlace}
+                              className="px-4 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
+                            >
+                              Add Nearby Place
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Render Nearby Places */}
+                      {formData.nearbyPlaces && formData.nearbyPlaces.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          {formData.nearbyPlaces.map((item, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-xs">
+                              {item.imageUrl && (
+                                <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-white truncate">{item.name}</p>
+                                <p className="text-[11px] text-amber-400">{item.distance} • <span className="text-slate-400">{item.category}</span></p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveNearbyPlace(idx)}
+                                className="text-slate-400 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* 4. Co-Related Places */}
-                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <h5 className="text-xs font-bold text-white">Co-Related Places</h5>
-                        <p className="text-[10px] text-slate-400">Monuments sharing historical heritage circuits</p>
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                            <span>Co-Related Places</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono">
+                              {formData.coRelatedPlaces?.length || 0} links
+                            </span>
+                          </h5>
+                          <p className="text-[10px] text-slate-400">Monuments sharing historical heritage circuits stored in database</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenSubSection(openSubSection === 'corelated' ? null : 'corelated')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
+                        >
+                          {openSubSection === 'corelated' ? '✕ Close' : '+ Link Related Place'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => alert('Link related place')}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
-                      >
-                        + Add
-                      </button>
+
+                      {/* Add Co-Related Place Form */}
+                      {openSubSection === 'corelated' && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700/80 space-y-3 animate-in fade-in">
+                          <p className="text-xs font-bold text-amber-400">Link Co-Related Historical Monument</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Place Name</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Grishneshwar Jyotirlinga (Verul)"
+                                value={coRelatedForm.name}
+                                onChange={(e) => setCoRelatedForm({ ...coRelatedForm, name: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Circuit / Route</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 12 Jyotirlinga Circuit / Maharashtra Heritage"
+                                value={coRelatedForm.circuit}
+                                onChange={(e) => setCoRelatedForm({ ...coRelatedForm, circuit: e.target.value })}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Image URL</label>
+                            <input
+                              type="url"
+                              placeholder="https://..."
+                              value={coRelatedForm.imageUrl}
+                              onChange={(e) => setCoRelatedForm({ ...coRelatedForm, imageUrl: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-1">Heritage Connection / Synergy</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Connected through River Godavari and Ahilyabai Holkar restorations"
+                              value={coRelatedForm.connection}
+                              onChange={(e) => setCoRelatedForm({ ...coRelatedForm, connection: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setOpenSubSection(null)}
+                              className="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddCoRelatedPlace}
+                              className="px-4 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
+                            >
+                              Link Place
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Render Co-Related Places */}
+                      {formData.coRelatedPlaces && formData.coRelatedPlaces.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          {formData.coRelatedPlaces.map((item, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-xs">
+                              {item.imageUrl && (
+                                <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-white truncate">{item.name}</p>
+                                <p className="text-[11px] text-amber-400">{item.circuit}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{item.connection}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCoRelatedPlace(idx)}
+                                className="text-slate-400 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
                   </div>
                 </div>
               )}

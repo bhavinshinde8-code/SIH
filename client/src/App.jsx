@@ -73,10 +73,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter places based on Search text with smart fuzzy & spell alias matching
-  const filteredPlaces = searchQuery.trim()
-    ? searchTouristDestinations(searchQuery, placesList)
-    : placesList;
+  // Top Trending Destinations: directly driven by Admin checkbox marks (never collapsed/altered by navbar search)
+  const trendingPlaces = placesList.filter((p) => p.isTopTrending !== false);
 
 
   // Admin CRUD Handlers communicating with MongoDB API
@@ -177,11 +175,10 @@ export default function App() {
             currentSlide={currentSlide}
           />
 
-          {/* 3. Top Trending Destinations Grid (Live MongoDB Data) */}
+          {/* 3. Top Trending Destinations Grid (Live MongoDB Data & Admin Selected) */}
           <DestinationsGrid
-            places={filteredPlaces}
+            places={trendingPlaces}
             onSelectPlace={(place) => setSelectedPlace(place)}
-            onResetFilters={() => setSearchQuery('')}
           />
 
           {/* 4. Features Section */}

@@ -26,14 +26,8 @@ export default function DestinationsGrid({
       {places.length === 0 ? (
         <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-slate-800">
           <Compass className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-lg font-medium text-slate-300">No destinations match your query.</p>
-          <p className="text-xs text-slate-500 mt-1">Try resetting the category filter or searching another keyword.</p>
-          <button
-            onClick={onResetFilters}
-            className="mt-4 px-4 py-2 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400"
-          >
-            Reset Filters
-          </button>
+          <p className="text-lg font-medium text-slate-300">No Top Trending destinations currently marked.</p>
+          <p className="text-xs text-slate-500 mt-1">Destinations can be marked as Top Trending from the Admin Dashboard.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -82,7 +76,7 @@ export default function DestinationsGrid({
                   </p>
 
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {place.highlights.slice(0, 3).map((item, idx) => (
+                    {Array.isArray(place.highlights) && place.highlights.slice(0, 3).map((item, idx) => (
                       <span
                         key={idx}
                         className="px-2.5 py-1 rounded-md bg-slate-800/80 text-[11px] font-medium text-slate-300 border border-slate-700/40"
@@ -91,6 +85,78 @@ export default function DestinationsGrid({
                       </span>
                     ))}
                   </div>
+
+                  {/* Dedicated Visual Preview for Google Nearby Places */}
+                  {place.nearbyPlaces?.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-amber-400">
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>Nearby Places to Visit (Within 15km):</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
+                          {place.nearbyPlaces.length} Spots
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {place.nearbyPlaces.slice(0, 2).map((near, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center gap-2"
+                          >
+                            {near.imageUrl ? (
+                              <img
+                                src={near.imageUrl}
+                                alt={near.name}
+                                className="w-8 h-8 rounded-lg object-cover bg-slate-800 shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shrink-0">
+                                📍
+                              </div>
+                            )}
+                            <div className="overflow-hidden min-w-0">
+                              <p className="text-xs font-semibold text-slate-200 truncate">{near.name}</p>
+                              <p className="text-[10px] text-amber-400 font-medium truncate">
+                                {near.distance} • {near.category || 'Spot'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dedicated Visual Preview for Co-Related Heritage Circuits */}
+                  {place.coRelatedPlaces?.length > 0 && (
+                    <div className="space-y-1.5 pt-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-blue-400">
+                        <span className="flex items-center gap-1.5">
+                          <Compass className="w-3.5 h-3.5" />
+                          <span>Co-Related Heritage Circuits:</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 font-mono">
+                          {place.coRelatedPlaces.length} Circuits
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {place.coRelatedPlaces.slice(0, 1).map((rel, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2 rounded-xl bg-blue-950/20 border border-blue-900/30 flex items-center justify-between gap-2"
+                          >
+                            <div className="overflow-hidden min-w-0">
+                              <p className="text-xs font-bold text-blue-200 truncate">{rel.name}</p>
+                              <p className="text-[10px] text-blue-300/80 truncate">{rel.circuit}</p>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 shrink-0 border border-blue-500/20">
+                              Linked
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

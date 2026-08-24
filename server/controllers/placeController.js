@@ -45,6 +45,12 @@ export const createPlace = async (req, res) => {
       bestTime,
       host,
       highlights,
+      isTopTrending,
+      hiddenHistory,
+      historyContent,
+      visualTimeline,
+      nearbyPlaces,
+      coRelatedPlaces,
     } = req.body;
 
     const newPlace = new Place({
@@ -59,6 +65,12 @@ export const createPlace = async (req, res) => {
       bestTime,
       host: host || 'Nashik Municipal Tourism Board',
       highlights: highlights || [],
+      isTopTrending: isTopTrending !== undefined ? Boolean(isTopTrending) : true,
+      hiddenHistory: hiddenHistory || '',
+      historyContent: Array.isArray(historyContent) ? historyContent : [],
+      visualTimeline: Array.isArray(visualTimeline) ? visualTimeline : [],
+      nearbyPlaces: Array.isArray(nearbyPlaces) ? nearbyPlaces : [],
+      coRelatedPlaces: Array.isArray(coRelatedPlaces) ? coRelatedPlaces : [],
       createdBy: req.admin._id,
     });
 
@@ -80,14 +92,32 @@ export const updatePlace = async (req, res) => {
       place.name = req.body.name || place.name;
       place.category = req.body.category || place.category;
       place.tag = req.body.tag || place.tag;
-      place.rating = req.body.rating || place.rating;
-      place.reviews = req.body.reviews || place.reviews;
+      place.rating = req.body.rating !== undefined ? req.body.rating : place.rating;
+      place.reviews = req.body.reviews !== undefined ? req.body.reviews : place.reviews;
       place.location = req.body.location || place.location;
       place.image = req.body.image || place.image;
       place.description = req.body.description || place.description;
       place.bestTime = req.body.bestTime || place.bestTime;
       place.host = req.body.host || place.host;
       place.highlights = req.body.highlights || place.highlights;
+      if (req.body.isTopTrending !== undefined) {
+        place.isTopTrending = Boolean(req.body.isTopTrending);
+      }
+      if (req.body.hiddenHistory !== undefined) {
+        place.hiddenHistory = req.body.hiddenHistory;
+      }
+      if (req.body.historyContent !== undefined) {
+        place.historyContent = req.body.historyContent;
+      }
+      if (req.body.visualTimeline !== undefined) {
+        place.visualTimeline = req.body.visualTimeline;
+      }
+      if (req.body.nearbyPlaces !== undefined) {
+        place.nearbyPlaces = req.body.nearbyPlaces;
+      }
+      if (req.body.coRelatedPlaces !== undefined) {
+        place.coRelatedPlaces = req.body.coRelatedPlaces;
+      }
 
       const updatedPlace = await place.save();
       res.json(updatedPlace);

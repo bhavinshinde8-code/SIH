@@ -47,6 +47,48 @@ const placeSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    isTopTrending: {
+      type: Boolean,
+      default: true,
+    },
+    hiddenHistory: {
+      type: String,
+      default: '',
+    },
+    historyContent: [
+      {
+        language: { type: String, default: 'English' },
+        mediaType: { type: String, enum: ['audio', 'video', 'text'], default: 'audio' },
+        title: { type: String, default: '' },
+        mediaUrl: { type: String, default: '' },
+        narrator: { type: String, default: '' },
+        duration: { type: String, default: '' },
+      }
+    ],
+    visualTimeline: [
+      {
+        year: { type: String, default: '' },
+        title: { type: String, default: '' },
+        imageUrl: { type: String, default: '' },
+        description: { type: String, default: '' },
+      }
+    ],
+    nearbyPlaces: [
+      {
+        name: { type: String, default: '' },
+        distance: { type: String, default: '' },
+        imageUrl: { type: String, default: '' },
+        category: { type: String, default: '' },
+      }
+    ],
+    coRelatedPlaces: [
+      {
+        name: { type: String, default: '' },
+        circuit: { type: String, default: '' },
+        imageUrl: { type: String, default: '' },
+        connection: { type: String, default: '' },
+      }
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',

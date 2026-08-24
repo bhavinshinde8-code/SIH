@@ -1,54 +1,14 @@
-// Curated high-res reliable landmarks images of India
-export const heroSlides = [
-  {
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=2000&q=85',
-    title: 'India Gate',
-    location: 'New Delhi, India',
-    tag: 'National Memorial'
-  },
-  {
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=2000&q=85',
-    title: 'Taj Mahal',
-    location: 'Agra, Uttar Pradesh',
-    tag: 'Wonder of the World'
-  },
-  {
-    type: 'image',
-    url: 'https://i.pinimg.com/736x/52/85/9b/52859b4f3dc06bbfeb6183951cd8bfab.jpg',
-    title: 'Raigad Fort (Raygad)',
-    location: 'Capital of Maratha Empire, Maharashtra',
-    tag: 'Chhatrapati Shivaji Maharaj Capital'
-  },
-  {
-    type: 'image',
-    url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQrOUoexMHwYG_eIBof8ajJH2y9P6Io460q8_WczQah3g&s=10',
-    title: 'Harihar Fort',
-    location: '80° Vertical Rock Steps, Nashik, Maharashtra',
-    tag: 'Sahyadri Thrill Trek'
-  },
-  {
-    type: 'image',
-    url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsIIxJc-GaA0zwVgCuXW8pJZk7p4b8TMrRjBpmSvgq3g&s=10',
-    title: 'Saptashrungi Devi Gad',
-    location: 'Vani, Nashik, Maharashtra',
-    tag: '51 Sacred Shakti Peethas'
-  },
+import dns from 'dns';
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 
-];
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import Place from '../models/Place.js';
 
-export const categories = [
-  { id: 'all', label: 'All Experiences', icon: 'Sparkles' },
-  { id: 'ancient', label: 'Ancient & Spiritual', icon: 'Landmark' },
-  { id: 'wildlife', label: 'Wildlife & Nature', icon: 'Trees' },
-  { id: 'heritage', label: 'Heritage & Culture', icon: 'Castle' },
-  { id: 'trek', label: 'Trek & Adventure', icon: 'Mountain' },
-];
+dotenv.config();
 
-export const nashikPlaces = [
+const placesData = [
   {
-    id: 'trimbakeshwar',
     name: 'Trimbakeshwar Shiva Temple',
     category: 'ancient',
     tag: 'Jyotirlinga & Ancient Architecture',
@@ -81,12 +41,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Grishneshwar Jyotirlinga (Ellora)', circuit: '12 Jyotirlinga Heritage Circuit', connection: 'Jyotirlinga circuit built with black stone architecture by Maratha rulers' },
       { name: 'Bhimashankar Jyotirlinga', circuit: 'Maharashtra Jyotirlinga Yatra', connection: 'Sahyadri mountain holy Shiva shrines connected through ancient pilgrimage paths' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Trimbakeshwar_Shiva_Temple',
-    aliases: ['trimbak', 'trimbkeshwar', 'trimkeshwar', 'tryambakeshwar', 'tri', 'shiv', 'shiva', 'jyotirlinga']
+    ]
   },
   {
-    id: 'saptashrungi',
     name: 'Saptashrungi Devi Gad (Vani)',
     category: 'ancient',
     tag: 'Holy Shakti Peetha & 7 Hills',
@@ -118,12 +75,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Mahalakshmi Temple (Kolhapur)', circuit: '51 Sacred Shakti Peethas', connection: 'Revered Shakti Peetha circuit across Maharashtra representing divine feminine power' },
       { name: 'Tuljapur Bhavani Temple', circuit: 'Maharashtra Sade Teen Shaktipeeth', connection: 'Patron deity of Chhatrapati Shivaji Maharaj and sacred mother goddess circuits' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Saptashrungi',
-    aliases: ['saptashringi', 'saptashrung', 'vani devi', 'gad', 'shakti peeth']
+    ]
   },
   {
-    id: 'harihar',
     name: 'Harihar Fort (Harishgad)',
     category: 'trek',
     tag: 'Iconic 80° Vertical Rock-cut Stairs',
@@ -155,12 +109,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Salher Fort', circuit: 'Highest Forts of Sahyadri', connection: 'Strategic Maratha defense watchpoints built to withstand long sieges' },
       { name: 'Torna Fort (Prachandagad)', circuit: 'Maratha Hill Fortresses', connection: 'First fort captured by Chhatrapati Shivaji Maharaj sharing rock-cut defenses' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Harihar_fort',
-    aliases: ['harishgad', 'harihar trek', 'vertical stairs', 'fort', 'trek']
+    ]
   },
   {
-    id: 'pandavleni',
     name: 'Pandavleni Caves (Trirashmi)',
     category: 'heritage',
     tag: '2nd Century BCE Rock-cut Caves',
@@ -192,12 +143,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Ajanta & Ellora Caves', circuit: 'Ancient Maharashtra Rock-Cut Cave Circuit', connection: 'Contemporary Satavahana and Rashtrakuta rock architecture along the ancient Dakshinapatha trade route' },
       { name: 'Karla & Bhaja Caves (Lonavala)', circuit: 'Buddhist Chaitya Circuit', connection: 'Early Hinayana wooden-style stone chaityas with similar Satavahana merchant donor inscriptions' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Pandavleni_Caves',
-    aliases: ['trirashmi caves', 'pandav leni', 'nashik caves', 'tri', 'caves', 'buddhist']
+    ]
   },
   {
-    id: 'anjeneri',
     name: 'Anjaneri Fort & Hills',
     category: 'trek',
     tag: 'Birthplace of Lord Hanuman & Trek',
@@ -229,12 +177,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Hampi (Kishkindha)', circuit: 'Ramayana Pilgrimage Circuit', connection: 'Sacred Monkey Kingdom of Sugriva and Hanuman connected via ancient Dandakaranya routes' },
       { name: 'Kishkindha Anjanadri Hill', circuit: 'Hanuman Sacred Shrines', connection: 'Sister pilgrimage sites associated with the divine childhood of Lord Hanuman' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Anjaneri',
-    aliases: ['hanuman birthplace', 'anjaneri hill', 'anjani', 'fort', 'trek']
+    ]
   },
   {
-    id: 'panchavati',
     name: 'Panchavati & Sita Gufa',
     category: 'ancient',
     tag: 'Ramayana Era Sacred Heritage',
@@ -266,12 +211,9 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Ayodhya Ram Janmabhoomi', circuit: 'Holy Ramayana Circuit', connection: 'Path traversed during the 14-year exile connecting Northern and Southern sacred heritage trails' },
       { name: 'Rameshwaram Ramanathaswamy Temple', circuit: 'Ramayana Mahatirth Circuit', connection: 'Pilgrimage route where Lord Rama worshipped Lord Shiva after the exile' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Panchavati',
-    aliases: ['ramkund', 'kalaram', 'sita gupha', 'sita gumpha', 'ramayana', 'temple']
+    ]
   },
   {
-    id: 'gangapur-wildlife',
     name: 'Gangapur Backwaters & Grasslands',
     category: 'wildlife',
     tag: 'Migratory Birds & Nature Haven',
@@ -302,27 +244,28 @@ export const nashikPlaces = [
     coRelatedPlaces: [
       { name: 'Nandur Madhmeshwar Bird Sanctuary', circuit: 'Maharashtra Wetlands & Birding Circuit', connection: 'Godavari backwaters migratory bird sanctuary known as the Bharatpur of Maharashtra' },
       { name: 'Kashyapi & Gautami Dam Backwaters', circuit: 'Nashik Lake District Circuit', connection: 'Chain of serene valley reservoirs framing the Western Ghats mountain backdrop' }
-    ],
-    webUrl: 'https://en.wikipedia.org/wiki/Gangapur_Dam',
-    aliases: ['gangapur dam', 'nashik backwaters', 'sula backwaters', 'dam', 'wildlife']
+    ]
   }
 ];
 
-export const features = [
-  {
-    title: 'Data From Resprctive Munciple Office',
-    desc: 'Get authentic local insights, hidden gems, and tailored historical narratives directly from registered hosts.',
-    icon: 'ShieldCheck'
-  },
-  {
-    title: 'Smart Destination Search',
-    desc: 'Search ancient temples, thrilling treks, heritage caves, and wildlife spots with filters and real-time timings.',
-    icon: 'Compass'
-  },
-  {
-    title: 'Seamless Travel Planning',
-    desc: 'Explore entry fees, best seasons, parking info, and guide contact details in one unified portal.',
-    icon: 'Map'
-  }
-];
+const syncDatabaseDirect = async () => {
+  try {
+    console.log('Connecting to MongoDB Atlas...');
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('Connected to MongoDB Atlas!');
 
+    // First, clear and re-populate all 7 places to ensure 100% clean schema with all modules populated
+    console.log('Refreshing places in MongoDB Atlas with complete Google Data...');
+    await Place.deleteMany({});
+    await Place.insertMany(placesData);
+
+    const count = await Place.countDocuments();
+    console.log(`Successfully updated and saved all ${count} destinations with full Google Nearby Places, Audio, Timeline, and Co-Related Circuits!`);
+    process.exit(0);
+  } catch (err) {
+    console.error('Error syncing:', err.message);
+    process.exit(1);
+  }
+};
+
+syncDatabaseDirect();

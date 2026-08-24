@@ -1,8 +1,36 @@
-import React from 'react';
-import { X, MapPin, ExternalLink, Globe, Star, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  X,
+  MapPin,
+  ExternalLink,
+  Globe,
+  Star,
+  ShieldCheck,
+  Headphones,
+  Volume2,
+  Clock,
+  Sparkles,
+  Compass,
+  Link as LinkIcon,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 export default function PlaceDetailModal({ place, onClose }) {
   if (!place) return null;
+
+  // Timeline slider index
+  const timelineItems = Array.isArray(place.visualTimeline) ? place.visualTimeline : [];
+  const [timelineIndex, setTimelineIndex] = useState(0);
+
+  // Audio Commentary active state
+  const historyItems = Array.isArray(place.historyContent) ? place.historyContent : [];
+  const [playingAudio, setPlayingAudio] = useState(null);
+
+  // Nearby & Co-related places
+  const nearbyPlaces = Array.isArray(place.nearbyPlaces) ? place.nearbyPlaces : [];
+  const coRelatedPlaces = Array.isArray(place.coRelatedPlaces) ? place.coRelatedPlaces : [];
 
   // Determine web URL if available or generate search URL
   const destinationWebUrl =
@@ -13,9 +41,12 @@ export default function PlaceDetailModal({ place, onClose }) {
     `${place.name} ${place.location} tourism guide timings history`
   )}`;
 
+  const currentTimelineEra = timelineItems[timelineIndex] || null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+        
         {/* Header Image */}
         <div className="relative h-64 sm:h-72 w-full bg-slate-800 shrink-0">
           <img
@@ -53,7 +84,9 @@ export default function PlaceDetailModal({ place, onClose }) {
         </div>
 
         {/* Body Details */}
-        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+          
+          {/* About Destination */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <span>About Destination</span>
@@ -63,6 +96,19 @@ export default function PlaceDetailModal({ place, onClose }) {
             </p>
           </div>
 
+          {/* Hidden / Unique History (if stored) */}
+          {place.hiddenHistory && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
+              <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Unique & Hidden History
+              </h4>
+              <p className="text-xs text-slate-300 leading-relaxed italic">
+                "{place.hiddenHistory}"
+              </p>
+            </div>
+          )}
+
+          {/* Key Facts */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-800/70 border border-slate-700/60">
               <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Best Season</span>
@@ -77,6 +123,7 @@ export default function PlaceDetailModal({ place, onClose }) {
             </div>
           </div>
 
+          {/* Highlights */}
           {place.highlights && place.highlights.length > 0 && (
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Key Highlights</h4>
@@ -88,6 +135,183 @@ export default function PlaceDetailModal({ place, onClose }) {
                   >
                     <span className="text-amber-400">✓</span> {h}
                   </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 1. History Content (Multilingual Audio / Video / Commentary) */}
+          {historyItems.length > 0 && (
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                  <Headphones className="w-4 h-4 text-amber-400" />
+                  <span>Multilingual Audio Commentaries & Guides ({historyItems.length})</span>
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                  Live Audio Vault
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {historyItems.map((item, idx) => {
+                  const isPlaying = playingAudio === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-500/40 transition"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">{item.title}</span>
+                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold uppercase">
+                            {item.language} • {item.mediaType}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 flex items-center gap-2">
+                          {item.narrator && <span>Narrated by {item.narrator}</span>}
+                          {item.duration && <span>• {item.duration}</span>}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setPlayingAudio(isPlaying ? null : idx)}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto ${
+                          isPlaying
+                            ? 'bg-amber-500 text-slate-950 shadow-md'
+                            : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                        }`}
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>{isPlaying ? 'Playing Narration...' : 'Play Commentary'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Visual Timeline (Year-by-Year Slider) */}
+          {timelineItems.length > 0 && currentTimelineEra && (
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span>Visual Timeline (Year-by-Year Era Slider)</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400">Slide to travel through historical eras of {place.name}</p>
+                </div>
+                <span className="text-xs font-black text-amber-400 font-mono px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  {timelineIndex + 1} / {timelineItems.length}
+                </span>
+              </div>
+
+              {/* Slider Input */}
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={timelineItems.length - 1}
+                  value={timelineIndex}
+                  onChange={(e) => setTimelineIndex(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                  <span>{timelineItems[0]?.year}</span>
+                  <span>{timelineItems[timelineItems.length - 1]?.year}</span>
+                </div>
+              </div>
+
+              {/* Active Era Card */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+                {currentTimelineEra.imageUrl && (
+                  <img
+                    src={currentTimelineEra.imageUrl}
+                    alt={currentTimelineEra.title}
+                    className="w-full sm:w-36 h-28 rounded-lg object-cover bg-slate-800 shrink-0"
+                  />
+                )}
+                <div className="space-y-1 text-center sm:text-left flex-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs font-mono">
+                      {currentTimelineEra.year}
+                    </span>
+                    <h5 className="text-sm font-bold text-white">{currentTimelineEra.title}</h5>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {currentTimelineEra.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-1">
+                <button
+                  disabled={timelineIndex === 0}
+                  onClick={() => setTimelineIndex((prev) => Math.max(0, prev - 1))}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-xs text-slate-300 font-semibold flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Previous Era
+                </button>
+                <button
+                  disabled={timelineIndex === timelineItems.length - 1}
+                  onClick={() => setTimelineIndex((prev) => Math.min(timelineItems.length - 1, prev + 1))}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-xs text-slate-300 font-semibold flex items-center gap-1"
+                >
+                  Next Era <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Nearby Places To Visit */}
+          {nearbyPlaces.length > 0 && (
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                <Compass className="w-4 h-4 text-amber-400" />
+                <span>Nearby Places To Visit (Within 15km)</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {nearbyPlaces.map((np, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+                    {np.imageUrl ? (
+                      <img src={np.imageUrl} alt={np.name} className="w-12 h-12 rounded-lg object-cover bg-slate-800 shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <h5 className="text-xs font-bold text-white truncate">{np.name}</h5>
+                      <p className="text-[11px] text-amber-400">{np.distance} • <span className="text-slate-400">{np.category}</span></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Co-Related Places */}
+          {coRelatedPlaces.length > 0 && (
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-amber-400" />
+                <span>Co-Related Historical Circuits & Heritage Links</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {coRelatedPlaces.map((cr, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-bold text-white truncate">{cr.name}</h5>
+                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/10 text-amber-400 font-bold">
+                        {cr.circuit}
+                      </span>
+                    </div>
+                    {cr.connection && (
+                      <p className="text-[11px] text-slate-400 leading-snug">{cr.connection}</p>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
