@@ -62,6 +62,7 @@ export const createPlace = async (req, res) => {
       location,
       image,
       description,
+      detailedDescription,
       bestTime,
       host: host || 'Nashik Municipal Tourism Board',
       highlights: highlights || [],
@@ -97,6 +98,9 @@ export const updatePlace = async (req, res) => {
       place.location = req.body.location || place.location;
       place.image = req.body.image || place.image;
       place.description = req.body.description || place.description;
+      if (req.body.detailedDescription !== undefined) {
+        place.detailedDescription = req.body.detailedDescription;
+      }
       place.bestTime = req.body.bestTime || place.bestTime;
       place.host = req.body.host || place.host;
       place.highlights = req.body.highlights || place.highlights;
@@ -134,15 +138,82 @@ export const updatePlace = async (req, res) => {
 // @access  Private (Admin only)
 export const deletePlace = async (req, res) => {
   try {
-    const place = await Place.findById(req.params.id);
+    const targetId = req.params.id;
+    let place = null;
+
+    // Check if valid 24-character hex MongoDB ObjectId
+    if (/^[0-9a-fA-F]{24}$/.test(targetId)) {
+      place = await Place.findById(targetId);
+    }
+
+    // Fallback: lookup by name or custom id field if not found by ObjectId
+    if (!place) {
+      place = await Place.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${targetId}$`, 'i') } },
+          { id: targetId }
+        ]
+      });
+    }
 
     if (place) {
       await place.deleteOne();
-      res.json({ message: 'Place removed successfully' });
+      res.json({ message: `"${place.name}" removed successfully from database` });
     } else {
-      res.status(404).json({ message: 'Place not found' });
+      res.status(404).json({ message: 'Place not found in database' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Generate a complete new tourist destination in real-time with Google Gemini AI
+// @route   POST /api/places/generate-live
+// @access  Public
+export const generateLivePlace = async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const cleanQuery = query.trim();
+
+    // 1. First check if this place already exists in MongoDB Atlas
+    const existing = await Place.findOne({
+      $or: [
+        { name: { $regex: new RegExp(`^${cleanQuery}$`, 'i') } },
+        { location: { $regex: new RegExp(cleanQuery, 'i') } }
+      ]
+    });
+
+    if (existing) {
+      return res.json({
+        place: existing,
+        source: 'database',
+        message: 'Loaded from existing database record'
+      });
+    }
+
+    // 2. Dynamically import AI service to generate full structured data
+    const { generateTouristPlaceWithAI } = await import('../services/aiPlaceService.js');
+    const generatedData = await generateTouristPlaceWithAI(cleanQuery);
+
+    // 3. Attach a unique runtime ID without writing/saving to MongoDB database
+    const livePlace = {
+      _id: `ai_${Date.now()}`,
+      ...generatedData,
+      isAiGenerated: true
+    };
+
+    res.status(200).json({
+      place: livePlace,
+      source: 'ai_generated',
+      message: `Generated live preview for "${livePlace.name}" (not saved to database)`
+    });
+  } catch (error) {
+    console.error('Error in generateLivePlace:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+

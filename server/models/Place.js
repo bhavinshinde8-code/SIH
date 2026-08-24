@@ -35,6 +35,10 @@ const placeSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    detailedDescription: {
+      type: String,
+      default: '',
+    },
     bestTime: {
       type: String,
       required: true,

@@ -183,3 +183,21 @@ export const deletePlaceApi = async (id, token) => {
   }
   return data;
 };
+
+// Generate live destination using Google Gemini AI
+export const generateLivePlaceApi = async (query) => {
+  const response = await fetch(`${API_URL}/places/generate-live`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to generate place with AI');
+  }
+  return data;
+};
+

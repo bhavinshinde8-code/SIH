@@ -137,6 +137,7 @@ export default function AdminDashboard({
       rating: 4.8,
       reviews: 100,
       description: '',
+      detailedDescription: '',
       bestTime: '',
       host: 'Nashik Municipal Tourism Board',
       highlights: '',
@@ -167,6 +168,7 @@ export default function AdminDashboard({
       rating: place.rating || 4.8,
       reviews: place.reviews || 100,
       description: place.description || '',
+      detailedDescription: place.detailedDescription || '',
       bestTime: place.bestTime || '',
       host: place.host || 'Nashik Municipal Tourism Board',
       highlights: hl,
@@ -719,11 +721,6 @@ export default function AdminDashboard({
                                       <span>🔗</span> {place.coRelatedPlaces.length} Circuits
                                     </span>
                                   )}
-                                  {place.historyContent?.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-1">
-                                      <span>🎙️</span> {place.historyContent.length} Audio Guides
-                                    </span>
-                                  )}
                                   {place.visualTimeline?.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold flex items-center gap-1">
                                       <span>⏳</span> {place.visualTimeline.length} Timeline Eras
@@ -1085,14 +1082,28 @@ export default function AdminDashboard({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Detailed Description</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Short Overview (Summary)</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   required
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Historical background and visitor information..."
+                  placeholder="Short 2-3 sentence overview..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-amber-400 mb-1 flex items-center justify-between">
+                  <span>Detailed Description (Full In-Depth 50-Line Heritage Narrative)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Stored in Database</span>
+                </label>
+                <textarea
+                  rows={8}
+                  value={formData.detailedDescription || ''}
+                  onChange={(e) => setFormData({ ...formData, detailedDescription: e.target.value })}
+                  placeholder="Detailed multi-paragraph history, architecture, spiritual significance, rituals, festival dates, timings, entry tickets, and traveler guidelines..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 leading-relaxed font-mono"
                 />
               </div>
 
@@ -1188,148 +1199,7 @@ export default function AdminDashboard({
                   {/* 4 Feature Action Accordions */}
                   <div className="space-y-4 pt-2">
                     
-                    {/* 1. History Content (Audio / Video / Text) */}
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h5 className="text-xs font-bold text-white flex items-center gap-2">
-                            <span>History Content (Audio / Video / Text)</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono">
-                              {formData.historyContent?.length || 0} items
-                            </span>
-                          </h5>
-                          <p className="text-[10px] text-slate-400">Multilingual audio commentaries and narration stored in database</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setOpenSubSection(openSubSection === 'history' ? null : 'history')}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center gap-1"
-                        >
-                          {openSubSection === 'history' ? '✕ Close' : '+ Add Commentary'}
-                        </button>
-                      </div>
 
-                      {/* Add History Form */}
-                      {openSubSection === 'history' && (
-                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700/80 space-y-3 animate-in fade-in">
-                          <p className="text-xs font-bold text-amber-400">Add New Multilingual Commentary</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Language</label>
-                              <select
-                                value={historyForm.language}
-                                onChange={(e) => setHistoryForm({ ...historyForm, language: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                              >
-                                <option value="English">English</option>
-                                <option value="Hindi">Hindi (हिंदी)</option>
-                                <option value="Marathi">Marathi (मराठी)</option>
-                                <option value="Sanskrit">Sanskrit (संस्कृत)</option>
-                                <option value="Tamil">Tamil (தமிழ்)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Type</label>
-                              <select
-                                value={historyForm.mediaType}
-                                onChange={(e) => setHistoryForm({ ...historyForm, mediaType: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                              >
-                                <option value="audio">Audio Commentary</option>
-                                <option value="video">Video Documentary</option>
-                                <option value="text">Historical Script</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Duration / Time</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. 4 mins 30s"
-                                value={historyForm.duration}
-                                onChange={(e) => setHistoryForm({ ...historyForm, duration: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Narrator / Author</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Pt. Vidyadhar Shastri"
-                                value={historyForm.narrator}
-                                onChange={(e) => setHistoryForm({ ...historyForm, narrator: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Commentary Title</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Origin of River Godavari & Kushavarta"
-                                value={historyForm.title}
-                                onChange={(e) => setHistoryForm({ ...historyForm, title: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-slate-400 block mb-1">Audio / Video Stream URL (or text notes)</label>
-                            <input
-                              type="text"
-                              placeholder="https://... or audio resource URL"
-                              value={historyForm.mediaUrl}
-                              onChange={(e) => setHistoryForm({ ...historyForm, mediaUrl: e.target.value })}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setOpenSubSection(null)}
-                              className="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleAddHistoryContent}
-                              className="px-4 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
-                            >
-                              Add Commentary Item
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Render Existing History Items */}
-                      {formData.historyContent && formData.historyContent.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          {formData.historyContent.map((item, idx) => (
-                            <div key={idx} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-xs">
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-white">{item.title}</span>
-                                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-semibold">
-                                    {item.language} • {item.mediaType}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-slate-400">
-                                  {item.narrator ? `Narrator: ${item.narrator}` : ''} {item.duration ? `(${item.duration})` : ''}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveHistoryContent(idx)}
-                                className="text-slate-400 hover:text-rose-400 p-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
 
                     {/* 2. Visual Timeline (year-by-year slider) */}
                     <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">

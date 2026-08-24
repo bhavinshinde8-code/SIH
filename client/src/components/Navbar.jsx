@@ -27,6 +27,8 @@ export default function Navbar({
   setActiveView,
   onAdminLogout,
   onUserLogout,
+  onGenerateLivePlace,
+  isGeneratingAi = false
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -63,8 +65,13 @@ export default function Navbar({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && suggestions.length > 0) {
-      handleSelectSuggestion(suggestions[0]);
+    if (e.key === 'Enter') {
+      if (suggestions.length > 0) {
+        handleSelectSuggestion(suggestions[0]);
+      } else if (searchQuery.trim().length >= 2 && onGenerateLivePlace) {
+        onGenerateLivePlace(searchQuery.trim());
+        setIsDropdownOpen(false);
+      }
     }
   };
 
@@ -108,7 +115,7 @@ export default function Navbar({
           </div>
           <div>
             <span className="text-xl font-black tracking-tight text-white flex items-center gap-1">
-              Bhavin<span className="text-amber-400">Shinde</span>
+              Team<span className="text-amber-400">Pheonix</span>
             </span>
             <p className="text-[10px] tracking-widest uppercase text-slate-400 font-medium">
               Incredible India Tourism
@@ -116,109 +123,121 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Center Search Bar with Auto-Suggestions & Spell Matching */}
-        <div className="relative w-80 lg:w-[420px]" ref={searchContainerRef}>
-          <div className="relative flex items-center">
-            <Search className="w-4 h-4 absolute left-3.5 text-amber-400" />
-            <input
-              type="text"
-              placeholder="Search 'trimbkeshwar', 'tri', 'raigad', 'taj'..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsDropdownOpen(true);
-              }}
-              onFocus={() => setIsDropdownOpen(true)}
-              onKeyDown={handleKeyDown}
-              className="w-full bg-slate-900/90 border border-slate-700/80 text-xs text-slate-200 placeholder-slate-400 rounded-full pl-9 pr-8 py-2.5 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition shadow-inner"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setIsDropdownOpen(false);
+        {/* Center Search Bar with Auto-Suggestions: Only visible when logged in (User or Admin) */}
+        {(currentUser || currentAdmin) && (
+          <div className="relative w-80 lg:w-[420px]" ref={searchContainerRef}>
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 absolute left-3.5 text-amber-400" />
+              <input
+                type="text"
+                placeholder="Search 'trimbkeshwar', 'tri', 'raigad', 'taj'..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
                 }}
-                className="absolute right-3 text-slate-400 hover:text-white text-xs w-4 h-4 rounded-full flex items-center justify-center bg-slate-800"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Auto-suggest dropdown modal */}
-          {isDropdownOpen && searchQuery.trim().length > 0 && (
-            <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="p-2 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400 px-3">
-                <span className="font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Matching Tourist Places
-                </span>
-                <span>{suggestions.length} places found</span>
-              </div>
-
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/60">
-                {suggestions.length > 0 ? (
-                  suggestions.map((item) => (
-                    <div
-                      key={item.id || item._id}
-                      onClick={() => handleSelectSuggestion(item)}
-                      className="p-3 hover:bg-slate-800/80 cursor-pointer transition flex items-center gap-3 group"
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0 group-hover:scale-105 transition"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white group-hover:text-amber-400 transition truncate flex items-center justify-between">
-                          <span>{item.name}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 font-medium">
-                            {item.tag?.split('&')[0] || 'Tourism'}
-                          </span>
-                        </p>
-                        <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                          <span>{item.location}</span>
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center">
-                    <p className="text-xs text-slate-400">No exact place found in offline list.</p>
-                    <a
-                      href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(
-                        searchQuery
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/20"
-                    >
-                      <span>Search web encyclopedia for "{searchQuery}"</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer search action */}
-              <div className="p-2.5 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between text-xs px-3">
-                <span className="text-[11px] text-slate-400">
-                  Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]">Enter</kbd> to open top match
-                </span>
+                onFocus={() => setIsDropdownOpen(true)}
+                onKeyDown={handleKeyDown}
+                className="w-full bg-slate-900/90 border border-slate-700/80 text-xs text-slate-200 placeholder-slate-400 rounded-full pl-9 pr-8 py-2.5 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition shadow-inner"
+              />
+              {searchQuery && (
                 <button
                   onClick={() => {
-                    if (suggestions.length > 0) {
-                      handleSelectSuggestion(suggestions[0]);
-                    }
+                    setSearchQuery('');
+                    setIsDropdownOpen(false);
                   }}
-                  className="text-amber-400 hover:underline text-xs font-semibold"
+                  className="absolute right-3 text-slate-400 hover:text-white text-xs w-4 h-4 rounded-full flex items-center justify-center bg-slate-800"
                 >
-                  View Details →
+                  ✕
                 </button>
-              </div>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Auto-suggest dropdown modal */}
+            {isDropdownOpen && searchQuery.trim().length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="p-2 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400 px-3">
+                  <span className="font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Matching Tourist Places
+                  </span>
+                  <span>{suggestions.length} places found</span>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/60">
+                  {suggestions.length > 0 ? (
+                    suggestions.map((item) => (
+                      <div
+                        key={item.id || item._id}
+                        onClick={() => handleSelectSuggestion(item)}
+                        className="p-3 hover:bg-slate-800/80 cursor-pointer transition flex items-center gap-3 group"
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0 group-hover:scale-105 transition"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-white group-hover:text-amber-400 transition truncate flex items-center justify-between">
+                            <span>{item.name}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 font-medium">
+                              {item.tag?.split('&')[0] || 'Tourism'}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span>{item.location}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center space-y-2">
+                      <p className="text-xs text-slate-400">Place not found in initial dataset.</p>
+                    </div>
+                  )}
+
+                  {/* Always Available Action: Generate Live Destination Card with Google Gemini AI */}
+                  {searchQuery.trim().length >= 3 && (
+                    <div className="p-2.5 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border-t border-amber-500/20">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onGenerateLivePlace) {
+                            onGenerateLivePlace(searchQuery.trim());
+                            setIsDropdownOpen(false);
+                          }
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition active:scale-95"
+                      >
+                        <Sparkles className="w-4 h-4 fill-slate-950" />
+                        <span>Create AI Destination Card for "{searchQuery}"</span>
+                      </button>
+                      <p className="text-[10px] text-slate-400 text-center mt-1">
+                        Generates real-time 15km nearby spots, circuits, audio guides & timeline via Google Gemini AI
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer search action */}
+                <div className="p-2.5 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between text-xs px-3">
+                  <span className="text-[11px] text-slate-400">
+                    Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]">Enter</kbd> to search
+                  </span>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${searchQuery} tourism`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber-400 hover:underline text-[11px] font-semibold flex items-center gap-1"
+                  >
+                    <span>Google Search</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Right Action: User / Admin state or Login button */}
         <div className="flex items-center gap-3">

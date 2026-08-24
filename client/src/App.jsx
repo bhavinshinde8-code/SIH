@@ -15,7 +15,8 @@ import {
   fetchPlacesApi,
   createPlaceApi,
   updatePlaceApi,
-  deletePlaceApi
+  deletePlaceApi,
+  generateLivePlaceApi
 } from './services/api';
 
 export default function App() {
@@ -93,9 +94,16 @@ export default function App() {
   };
 
   const handleDeletePlace = async (placeId) => {
-    if (!currentAdmin?.token) return;
-    await deletePlaceApi(placeId, currentAdmin.token);
-    setPlacesList((prev) => prev.filter((p) => (p._id || p.id) !== placeId));
+    try {
+      if (currentAdmin?.token) {
+        await deletePlaceApi(placeId, currentAdmin.token);
+      }
+      setPlacesList((prev) => prev.filter((p) => (p._id || p.id) !== placeId && p.name !== placeId));
+    } catch (err) {
+      alert(`Delete Error: ${err.message}`);
+      // Still remove from UI view if desired
+      setPlacesList((prev) => prev.filter((p) => (p._id || p.id) !== placeId && p.name !== placeId));
+    }
   };
 
   // Auth Success Handlers
@@ -123,8 +131,48 @@ export default function App() {
     setActiveView('home');
   };
 
+  // Live AI Destination Generation Handler
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiGeneratingPlaceName, setAiGeneratingPlaceName] = useState('');
+
+  const handleGenerateLivePlace = async (query) => {
+    try {
+      setIsGeneratingAi(true);
+      setAiGeneratingPlaceName(query);
+      const res = await generateLivePlaceApi(query);
+      if (res?.place) {
+        // Do NOT store or add to the webpage places list; open directly in modal viewer only
+        setActiveView('home');
+        setSelectedPlace(res.place);
+      }
+    } catch (err) {
+      alert(`AI Generation Notice: ${err.message}`);
+    } finally {
+      setIsGeneratingAi(false);
+      setAiGeneratingPlaceName('');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+      {/* AI Generation Floating Status Modal / Toast */}
+      {isGeneratingAi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-amber-500/50 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto animate-pulse">
+              <span className="text-2xl">✨</span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">Generating Destination Card</h3>
+              <p className="text-xs text-amber-400 font-medium font-mono">"{aiGeneratingPlaceName}"</p>
+              <p className="text-[11px] text-slate-400 pt-2">
+                Consulting Google Gemini AI to discover nearby spots within 15km, heritage circuits, historical milestones & audio guides...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header / Navbar */}
       <Navbar
         searchQuery={searchQuery}
@@ -141,6 +189,8 @@ export default function App() {
         setActiveView={setActiveView}
         onAdminLogout={handleAdminLogout}
         onUserLogout={handleUserLogout}
+        onGenerateLivePlace={handleGenerateLivePlace}
+        isGeneratingAi={isGeneratingAi}
       />
 
       {/* View Switch: Admin Dashboard vs User Dashboard vs Main Website */}
