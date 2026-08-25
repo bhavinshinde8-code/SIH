@@ -12,6 +12,8 @@ import {
   Sparkles,
   MapPin,
   ExternalLink,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { searchTouristDestinations } from '../data/indiaWebPlaces';
 
@@ -28,7 +30,9 @@ export default function Navbar({
   onAdminLogout,
   onUserLogout,
   onGenerateLivePlace,
-  isGeneratingAi = false
+  isGeneratingAi = false,
+  theme = 'dark',
+  onToggleTheme
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -77,49 +81,63 @@ export default function Navbar({
 
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-slate-950/85 backdrop-blur-lg border-b border-slate-800">
+    <nav className={`fixed top-0 left-0 w-full z-50 backdrop-blur-lg border-b transition-colors duration-300 ${
+      theme === 'light'
+        ? 'bg-white/90 border-slate-200 shadow-sm'
+        : 'bg-slate-950/85 border-slate-800'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Logo Section with India Emblem / Tiranga Chakra */}
-        <div
-          onClick={() => setActiveView && setActiveView('home')}
-          className="flex items-center gap-3 cursor-pointer group"
-        >
-          <div className="w-11 h-11 rounded-xl p-[2px] bg-gradient-to-b from-[#FF9933] via-white to-[#138808] shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform duration-300">
-            <div className="w-full h-full rounded-[10px] bg-slate-950 flex items-center justify-center relative overflow-hidden">
-              {/* Ashoka Chakra vector */}
-              <svg
-                viewBox="0 0 100 100"
-                className="w-7 h-7 text-blue-600 animate-spin-slow"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="3" />
-                <circle cx="50" cy="50" r="8" fill="currentColor" />
-                {Array.from({ length: 24 }).map((_, i) => {
-                  const angle = (i * 360) / 24;
-                  return (
-                    <line
-                      key={i}
-                      x1="50"
-                      y1="50"
-                      x2={50 + 40 * Math.cos((angle * Math.PI) / 180)}
-                      y2={50 + 40 * Math.sin((angle * Math.PI) / 180)}
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                  );
-                })}
-              </svg>
+        
+        {/* Left Section: Team Pheonix Brand Logo */}
+        <div className="flex items-center gap-3">
+          {/* Logo Section with India Emblem / Tiranga Chakra */}
+          <div
+            onClick={() => setActiveView && setActiveView('home')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="w-11 h-11 rounded-xl p-[2px] bg-gradient-to-b from-[#FF9933] via-white to-[#138808] shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform duration-300">
+              <div className={`w-full h-full rounded-[10px] flex items-center justify-center relative overflow-hidden transition-colors ${
+                theme === 'light' ? 'bg-white' : 'bg-slate-950'
+              }`}>
+                {/* Ashoka Chakra vector */}
+                <svg
+                  viewBox="0 0 100 100"
+                  className="w-7 h-7 text-blue-600 animate-spin-slow"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="3" />
+                  <circle cx="50" cy="50" r="8" fill="currentColor" />
+                  {Array.from({ length: 24 }).map((_, i) => {
+                    const angle = (i * 360) / 24;
+                    return (
+                      <line
+                        key={i}
+                        x1="50"
+                        y1="50"
+                        x2={50 + 40 * Math.cos((angle * Math.PI) / 180)}
+                        y2={50 + 40 * Math.sin((angle * Math.PI) / 180)}
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
-          </div>
-          <div>
-            <span className="text-xl font-black tracking-tight text-white flex items-center gap-1">
-              Team<span className="text-amber-400">Pheonix</span>
-            </span>
-            <p className="text-[10px] tracking-widest uppercase text-slate-400 font-medium">
-              Incredible India Tourism
-            </p>
+            <div>
+              <span className={`text-xl font-black tracking-tight flex items-center gap-1 ${
+                theme === 'light' ? 'text-slate-900' : 'text-white'
+              }`}>
+                Team<span className="text-amber-500">Pheonix</span>
+              </span>
+              <p className={`text-[10px] tracking-widest uppercase font-medium ${
+                theme === 'light' ? 'text-slate-500' : 'text-slate-400'
+              }`}>
+                Incredible India Tourism
+              </p>
+            </div>
           </div>
         </div>
 
@@ -239,8 +257,28 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Right Action: User / Admin state or Login button */}
+        {/* Right Action: Theme Toggle + User / Admin state or Login button */}
         <div className="flex items-center gap-3">
+          {/* Light / Dark Mode Toggle Button on Right Top Side */}
+          {onToggleTheme && (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className={`p-2.5 rounded-xl border transition-all duration-300 flex items-center justify-center shadow-md active:scale-95 group ${
+                theme === 'light'
+                  ? 'bg-amber-100/80 border-amber-300/80 text-amber-600 hover:bg-amber-200'
+                  : 'bg-slate-900/90 border-slate-800 text-amber-400 hover:bg-slate-800 hover:border-amber-400/50'
+              }`}
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? (
+                <Moon className="w-4 h-4 transition-transform group-hover:-rotate-12 fill-amber-500/20" />
+              ) : (
+                <Sun className="w-4 h-4 transition-transform group-hover:rotate-45" />
+              )}
+            </button>
+          )}
+
           {currentAdmin ? (
             <div className="flex items-center gap-2">
               <button

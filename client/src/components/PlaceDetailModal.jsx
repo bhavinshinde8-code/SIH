@@ -119,13 +119,13 @@ export default function PlaceDetailModal({ place, onClose }) {
       <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         
         {/* Header Image */}
-        <div className="relative h-64 sm:h-72 w-full bg-slate-800 shrink-0">
+        <div className="place-modal-header relative h-64 sm:h-72 w-full bg-slate-800 shrink-0">
           <img
             src={place.image}
             alt={place.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-slate-950/20" />
           
           <button
             onClick={onClose}
@@ -141,15 +141,15 @@ export default function PlaceDetailModal({ place, onClose }) {
           </div>
 
           <div className="absolute bottom-4 left-6 right-6">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               {place.tag || 'Heritage & Cultural Tourism'}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 drop-shadow-md">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
               {place.name}
             </h2>
-            <div className="flex items-center gap-2 text-xs text-slate-300 mt-1.5">
+            <div className="flex items-center gap-2 text-xs text-white/90 mt-1.5 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] font-medium">
               <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="truncate font-medium">{place.location}</span>
+              <span className="truncate">{place.location}</span>
             </div>
           </div>
         </div>

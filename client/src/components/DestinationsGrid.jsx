@@ -45,22 +45,22 @@ export default function DestinationsGrid({
                     alt={place.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
 
                   {/* Tag badge */}
-                  <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-[10px] uppercase font-bold tracking-wider text-amber-300">
+                  <div className="card-photo-tag absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md border border-amber-400/40 text-[10px] uppercase font-bold tracking-wider text-amber-300 shadow-md">
                     {place.tag}
                   </div>
 
                   {/* Rating badge */}
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-xs font-bold text-white flex items-center gap-1">
+                  <div className="card-photo-rating absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-xs font-bold text-white flex items-center gap-1 shadow-md">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span>{place.rating}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">({place.reviews})</span>
+                    <span className="text-[10px] text-slate-300 font-normal">({place.reviews})</span>
                   </div>
 
                   {/* Location strip */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 text-xs text-slate-200 font-medium">
+                  <div className="card-location-strip absolute bottom-3 left-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-xs font-semibold text-slate-100 shadow-lg">
                     <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                     <span className="truncate">{place.location}</span>
                   </div>
@@ -135,7 +135,7 @@ export default function DestinationsGrid({
                           <Compass className="w-3.5 h-3.5" />
                           <span>Co-Related Heritage Circuits:</span>
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 font-mono">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono font-semibold">
                           {place.coRelatedPlaces.length} Circuits
                         </span>
                       </div>
@@ -143,13 +143,13 @@ export default function DestinationsGrid({
                         {place.coRelatedPlaces.slice(0, 1).map((rel, idx) => (
                           <div
                             key={idx}
-                            className="p-2 rounded-xl bg-blue-950/20 border border-blue-900/30 flex items-center justify-between gap-2"
+                            className="p-2.5 rounded-xl bg-blue-950/20 border border-blue-900/30 flex items-center justify-between gap-2 transition-colors"
                           >
                             <div className="overflow-hidden min-w-0">
                               <p className="text-xs font-bold text-blue-200 truncate">{rel.name}</p>
-                              <p className="text-[10px] text-blue-300/80 truncate">{rel.circuit}</p>
+                              <p className="text-[10px] text-blue-300/80 font-medium truncate">{rel.circuit}</p>
                             </div>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 shrink-0 border border-blue-500/20">
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 shrink-0 border border-blue-500/20">
                               Linked
                             </span>
                           </div>

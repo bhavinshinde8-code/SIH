@@ -12,7 +12,7 @@ export default function Footer({ onHostDashboardClick }) {
               <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
                 <Compass className="w-5 h-5 text-slate-950" />
               </div>
-              <span className="text-lg font-black text-white">YATRA INDIA</span>
+              <span className="text-lg font-black text-white">Team Phoenix</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               Empowering meaningful travel across India by connecting passionate explorers with local destination hosts.
@@ -36,22 +36,22 @@ export default function Footer({ onHostDashboardClick }) {
             <div className="space-y-2 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-amber-400" />
-                <span>+91 (0253) 2570000 / Nashik Helpdesk</span>
+                <span>+91 8999515737 / Phoenix Helpdesk</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-amber-400" />
-                <span>support@yatraindia.org</span>
+                <span>support@phoenix.org</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                <span>Nashik Tourism Hub, Maharashtra, India</span>
+                <span> Tourism Hub India</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
-          <p>© {new Date().getFullYear()} Yatra India Tourism Portal. All rights reserved.</p>
+          <p>© {new Date().getFullYear()}Phoenix Tourism Portal. All rights reserved.</p>
           <p>Designed with React & Tailwind CSS for SIH Tourism Innovation</p>
         </div>
       </div>

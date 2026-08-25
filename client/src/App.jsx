@@ -20,6 +20,15 @@ import {
 } from './services/api';
 
 export default function App() {
+  // Theme state: dark by default, persists in localStorage
+  const [theme, setTheme] = useState(() => localStorage.getItem('sih_theme') || 'dark');
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('sih_theme', nextTheme);
+  };
+
   const [placesList, setPlacesList] = useState(nashikPlaces);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlace, setSelectedPlace] = useState(null);
@@ -154,7 +163,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className={`min-h-screen font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-300 ${theme} ${
+      theme === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'
+    }`}>
       {/* AI Generation Floating Status Modal / Toast */}
       {isGeneratingAi && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
@@ -191,6 +202,8 @@ export default function App() {
         onUserLogout={handleUserLogout}
         onGenerateLivePlace={handleGenerateLivePlace}
         isGeneratingAi={isGeneratingAi}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* View Switch: Admin Dashboard vs User Dashboard vs Main Website */}
@@ -223,6 +236,7 @@ export default function App() {
           <HeroSection
             heroSlides={heroSlides}
             currentSlide={currentSlide}
+            theme={theme}
           />
 
           {/* 3. Top Trending Destinations Grid (Live MongoDB Data & Admin Selected) */}

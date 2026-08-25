@@ -35,6 +35,13 @@ export const heroSlides = [
     location: 'Vani, Nashik, Maharashtra',
     tag: '51 Sacred Shakti Peethas'
   },
+{
+    type: 'image',
+    url: 'https://s7ap1.scene7.com/is/image/incredibleindia/panchvati-nashik-maharashtra-2-attr-hero?qlt=82&ts=1726669940050',
+    title: 'PANCHAVATI ',
+    location: 'Vani, Nashik, Maharashtra',
+    tag: '51 Sacred Shakti Peethas'
+  },
 
 ];
 
