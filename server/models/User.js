@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    rewardPoints: {
+      type: Number,
+      default: 0,
+    },
     otp: {
       type: String,
     },

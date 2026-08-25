@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   QrCode,
@@ -24,72 +24,183 @@ import {
   Smartphone,
   Headphones,
   BellRing,
-  Menu
+  Menu,
+  Trash2
 } from 'lucide-react';
+
+import { nashikPlaces } from '../data/tourismData';
+import {
+  fetchUserHistoryApi,
+  deleteUserHistoryApi,
+  clearUserHistoryApi,
+  updateUserRewardPointsApi
+} from '../services/api';
 
 export default function UserDashboard({
   currentUser,
   onLogout,
   onExploreDestinations,
   onSelectPlace,
-  places = []
+  places = [],
+  onRecordSearch
 }) {
-  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'history' | 'guide' | 'rewards' | 'contact'
+  const [activeTab, setActiveTab] = useState('history');
   const [searchQuery, setSearchQuery] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
-  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(true); // Dropdown accordion state
+  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(true);
 
-  // Mock travel history / visited places
-  const [travelHistory, setTravelHistory] = useState([
-    {
-      id: 'h1',
-      title: 'Trimbakeshwar Shiva Jyotirlinga Temple',
-      date: 'Today, 10:45 AM',
-      points: '+50 pts',
-      category: 'Spiritual',
-      status: 'Verified via QR'
-    },
-    {
-      id: 'h2',
-      title: 'Panchavati & Sita Gufa',
-      date: 'Yesterday, 04:20 PM',
-      points: '+40 pts',
-      category: 'Heritage',
-      status: 'Visited'
-    },
-    {
-      id: 'h3',
-      title: 'Sula Vineyards Tour & Wine Tasting',
-      date: '18 Aug 2026',
-      points: '+75 pts',
-      category: 'Agri-Tourism',
-      status: 'Visited'
+  const userIdentifier = currentUser?.phone || currentUser?.email || 'guest';
+  const userStorageKey = `sih_travel_history_${userIdentifier}`;
+  const pointsStorageKey = `sih_reward_points_${userIdentifier}`;
+
+  // Reward points balance state (persisted in DB & localStorage independently from history deletions)
+  const [rewardPoints, setRewardPoints] = useState(() => {
+    try {
+      const savedPoints = localStorage.getItem(pointsStorageKey);
+      if (savedPoints !== null) {
+        return parseInt(savedPoints, 10) || 0;
+      }
+    } catch (e) {
+      console.warn('Could not read reward points from storage', e);
     }
-  ]);
+    return 0;
+  });
 
-  // Mock rewards
+  // Real search & travel history (synced with MongoDB Atlas & localStorage)
+  const [travelHistory, setTravelHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem(userStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read travel history from storage', e);
+    }
+    return [];
+  });
+
+  // Fetch real history & reward points directly from MongoDB Atlas on load/user switch
+  useEffect(() => {
+    const loadDbHistory = async () => {
+      try {
+        const res = await fetchUserHistoryApi(userIdentifier);
+        if (res?.success) {
+          if (Array.isArray(res.history)) {
+            setTravelHistory(res.history);
+            localStorage.setItem(userStorageKey, JSON.stringify(res.history));
+          }
+
+          // Calculate history points sum
+          const historyPts = (res.history || []).reduce((acc, item) => {
+            const pts = parseInt((item.points || '').replace(/[^\d]/g, ''), 10) || 0;
+            return acc + pts;
+          }, 0);
+
+          // Use the highest between DB points and history sum
+          const currentLocal = parseInt(localStorage.getItem(pointsStorageKey) || '0', 10);
+          const finalPoints = Math.max(res.rewardPoints || 0, historyPts, currentLocal);
+          setRewardPoints(finalPoints);
+          localStorage.setItem(pointsStorageKey, finalPoints.toString());
+        }
+      } catch (err) {
+        console.warn('Could not fetch MongoDB history (using local storage fallback):', err.message);
+      }
+    };
+    loadDbHistory();
+  }, [userIdentifier, userStorageKey, pointsStorageKey]);
+
+  // Sync points when new items added to history
+  useEffect(() => {
+    const historyPts = travelHistory.reduce((acc, item) => {
+      const pts = parseInt((item.points || '').replace(/[^\d]/g, ''), 10) || 0;
+      return acc + pts;
+    }, 0);
+
+    setRewardPoints((prev) => {
+      const updated = Math.max(prev, historyPts);
+      localStorage.setItem(pointsStorageKey, updated.toString());
+      updateUserRewardPointsApi(userIdentifier, updated).catch(() => {});
+      return updated;
+    });
+  }, [travelHistory, userIdentifier, pointsStorageKey]);
+
+  // Delete individual history item (from MongoDB & local state, keeps earned points)
+  const handleDeleteHistoryItem = async (historyId, e) => {
+    if (e) e.stopPropagation();
+    const itemToDelete = travelHistory.find((item) => item.id === historyId);
+    setTravelHistory((prev) => {
+      const updated = prev.filter((item) => item.id !== historyId);
+      try {
+        localStorage.setItem(userStorageKey, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Could not save updated history', err);
+      }
+      return updated;
+    });
+
+    if (itemToDelete?._dbId || historyId) {
+      try {
+        await deleteUserHistoryApi(itemToDelete?._dbId || historyId);
+      } catch (err) {
+        console.warn('Could not delete from MongoDB:', err.message);
+      }
+    }
+  };
+
+  // Clear all travel history (from MongoDB & local storage, preserves reward points)
+  const handleClearAllHistory = async () => {
+    if (travelHistory.length === 0) return;
+    if (window.confirm('Are you sure you want to clear your travel and search history? (Your earned Reward Points balance will remain safe!)')) {
+      setTravelHistory([]);
+      try {
+        localStorage.removeItem(userStorageKey);
+        await clearUserHistoryApi(userIdentifier);
+      } catch (e) {
+        console.warn('Could not clear history from MongoDB', e);
+      }
+    }
+  };
+
+  // Total points balance is rewardPoints
+  const totalPoints = rewardPoints;
+
+  // Dynamic rewards based on real points balance
   const rewardsList = [
     {
       title: 'Free Audio Guide Pass',
-      badge: 'Spiritual Tier',
-      pointsReq: '100 pts',
-      unlocked: true,
+      badge: 'Bronze Tier',
+      pointsReq: '50 pts',
+      requiredVal: 50,
+      unlocked: totalPoints >= 50,
       desc: 'Free multi-language audio commentary across all Nashik temple circuits.'
     },
     {
-      title: 'Sula Vineyard 15% Tasting Discount',
-      badge: 'Agri Tour Tier',
-      pointsReq: '250 pts',
-      unlocked: true,
-      desc: 'Instant discount on wine tasting sessions at Sula & York Vineyards.'
+      title: 'Heritage Monolith Fast-Track Entry',
+      badge: 'Silver Tier',
+      pointsReq: '100 pts',
+      requiredVal: 100,
+      unlocked: totalPoints >= 100,
+      desc: 'Priority queue admission at Pandavleni Buddhist Caves & Museum.'
     },
     {
-      title: 'Heritage Monolith Fast-Track Entry',
-      badge: 'Explorer Tier',
-      pointsReq: '500 pts',
-      unlocked: false,
-      desc: 'Priority queue admission at Pandavleni Buddhist Caves & Museum.'
+      title: 'Sula Vineyard 15% Tasting Discount',
+      badge: 'Gold Tier',
+      pointsReq: '200 pts',
+      requiredVal: 200,
+      unlocked: totalPoints >= 200,
+      desc: 'Instant 15% discount on wine tasting sessions at Sula & York Vineyards.'
+    },
+    {
+      title: 'VIP Kumbh Ghat Aarti Access',
+      badge: 'Platinum Tier',
+      pointsReq: '350 pts',
+      requiredVal: 350,
+      unlocked: totalPoints >= 350,
+      desc: 'Reserved front-row seating at Ramkund Godavari evening Maha Aarti.'
     }
   ];
 
@@ -129,16 +240,20 @@ export default function UserDashboard({
         pointsEarned: 50,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
-      // Add to history
+      // Add to real history
       if (randomPlace) {
         setTravelHistory((prev) => [
           {
             id: 'h_' + Date.now(),
+            placeId: randomPlace._id || randomPlace.id,
             title: randomPlace.name,
-            date: 'Just now',
+            image: randomPlace.image,
+            location: randomPlace.location,
+            date: 'Just now (' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')',
             points: '+50 pts',
-            category: randomPlace.tag,
-            status: 'Verified via QR'
+            category: randomPlace.tag || 'Heritage',
+            status: 'Verified via QR',
+            placeData: randomPlace
           },
           ...prev
         ]);
@@ -206,7 +321,10 @@ export default function UserDashboard({
               {searchedPlaces.slice(0, 3).map((place) => (
                 <div
                   key={place._id || place.id}
-                  onClick={() => onSelectPlace && onSelectPlace(place)}
+                  onClick={() => {
+                    if (onRecordSearch) onRecordSearch(place);
+                    if (onSelectPlace) onSelectPlace(place);
+                  }}
                   className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-amber-400/50 cursor-pointer transition flex items-center gap-3"
                 >
                   <img
@@ -325,7 +443,7 @@ export default function UserDashboard({
                       <span>Rewards</span>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
-                      165 Pts
+                      {totalPoints} Pts
                     </span>
                   </button>
 
@@ -385,7 +503,7 @@ export default function UserDashboard({
                     <Award className="w-3.5 h-3.5 text-amber-400" />
                     Explorer Points
                   </span>
-                  <span className="font-bold text-amber-400">165 Pts</span>
+                  <span className="font-bold text-amber-400">{totalPoints} Pts</span>
                 </div>
               </div>
 
@@ -564,48 +682,113 @@ export default function UserDashboard({
             {/* TAB 2: HISTORY */}
             {activeTab === 'history' && (
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                       <History className="w-5 h-5 text-amber-400" />
-                      <span>Travel & QR Check-in History</span>
+                      <span>Search & Exploration History</span>
                     </h2>
-                    <p className="text-xs text-slate-400">Verified visits and points accumulated across Nashik</p>
+                    <p className="text-xs text-slate-400">Recently searched and explored heritage places</p>
                   </div>
-                  <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-bold">
-                    {travelHistory.length} Places Visited
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-bold">
+                      {travelHistory.length} Places Explored
+                    </span>
+                    {travelHistory.length > 0 && (
+                      <button
+                        onClick={handleClearAllHistory}
+                        className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold border border-rose-500/20 transition flex items-center gap-1"
+                        title="Clear all search history"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Clear All</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  {travelHistory.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between gap-4 hover:border-slate-700 transition"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-                          <MapPin className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-white">{item.title}</h4>
-                          <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-                            <span className="text-amber-400/90 font-medium">{item.category}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {item.date}
-                            </span>
-                          </p>
-                        </div>
+                  {travelHistory.length === 0 ? (
+                    <div className="p-8 text-center rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mx-auto">
+                        <History className="w-6 h-6" />
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                          {item.points}
-                        </span>
-                        <p className="text-[10px] text-slate-500 mt-1">{item.status}</p>
-                      </div>
+                      <p className="text-sm font-semibold text-slate-300">No search history recorded yet.</p>
+                      <p className="text-xs text-slate-500">
+                        Search any destination from the top search bar or dashboard to save it here!
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    travelHistory.map((item) => {
+                      const matchedPlace = item.placeData || places.find(p => (p._id || p.id) === item.placeId || p.name === item.title);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            if (matchedPlace && onSelectPlace) {
+                              onSelectPlace(matchedPlace);
+                            }
+                          }}
+                          className={`p-4 rounded-2xl bg-slate-950 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-amber-500/40 hover:bg-slate-900/60 transition ${
+                            matchedPlace ? 'cursor-pointer group' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3.5">
+                            {item.image || matchedPlace?.image ? (
+                              <img
+                                src={item.image || matchedPlace?.image}
+                                alt={item.title}
+                                className="w-14 h-14 rounded-xl object-cover border border-slate-800 shrink-0 group-hover:scale-105 transition"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                                <MapPin className="w-5 h-5" />
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition">
+                                  {item.title}
+                                </h4>
+                                <span className="text-[10px] font-semibold text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                                  {item.category}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 flex flex-wrap items-center gap-2">
+                                {item.location || matchedPlace?.location ? (
+                                  <span className="flex items-center gap-1 text-slate-300">
+                                    <MapPin className="w-3 h-3 text-amber-400" />
+                                    <span>{item.location || matchedPlace?.location}</span>
+                                  </span>
+                                ) : null}
+                                <span>•</span>
+                                <span className="flex items-center gap-1 text-slate-400 font-mono text-[11px]">
+                                  <Clock className="w-3 h-3" /> {item.date}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                                {item.points}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                                className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-500/20 hover:text-rose-400 text-slate-500 transition"
+                                title="Delete from history"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-medium">{item.status}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -701,11 +884,11 @@ export default function UserDashboard({
                       <Award className="w-5 h-5 text-amber-400" />
                       <span>Explorer Rewards & Badges</span>
                     </h2>
-                    <p className="text-xs text-slate-400">Earn points by scanning monument QRs and redeem exclusive perks</p>
+                    <p className="text-xs text-slate-400">Earn points by scanning monument QRs and searching destinations</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] text-slate-400">Current Balance</p>
-                    <span className="text-lg font-black text-amber-400 font-mono">165 Pts</span>
+                    <span className="text-lg font-black text-amber-400 font-mono">{totalPoints} Pts</span>
                   </div>
                 </div>
 

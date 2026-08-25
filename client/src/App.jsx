@@ -16,7 +16,8 @@ import {
   createPlaceApi,
   updatePlaceApi,
   deletePlaceApi,
-  generateLivePlaceApi
+  generateLivePlaceApi,
+  saveUserHistoryApi
 } from './services/api';
 
 export default function App() {
@@ -38,6 +39,51 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeView, setActiveView] = useState('home'); // 'home' | 'admin' | 'user'
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Helper to record genuinely searched destinations into MongoDB Atlas & user's local history
+  const recordPlaceSearchHistory = async (place) => {
+    if (!place) return;
+    const userIdentifier = currentUser?.phone || currentUser?.email || 'guest';
+    const userKey = `sih_travel_history_${userIdentifier}`;
+    const newEntry = {
+      id: 'search_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      placeId: place._id || place.id,
+      title: place.name,
+      image: place.image,
+      location: place.location,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ', Today',
+      points: '+25 pts',
+      category: place.tag || 'Searched Destination',
+      status: 'Searched & Explored',
+      placeData: place
+    };
+
+    // 1. Save locally for instant offline UI responsiveness
+    try {
+      const existing = JSON.parse(localStorage.getItem(userKey) || '[]');
+      localStorage.setItem(userKey, JSON.stringify([newEntry, ...existing]));
+    } catch (e) {
+      console.warn('Could not record local history', e);
+    }
+
+    // 2. Persist directly to MongoDB Atlas
+    try {
+      await saveUserHistoryApi({
+        userId: currentUser?.id || currentUser?._id || userIdentifier,
+        userIdentifier,
+        placeId: place._id || place.id,
+        title: place.name,
+        image: place.image,
+        location: place.location,
+        points: '+25 pts',
+        category: place.tag || 'Searched Destination',
+        status: 'Searched & Explored',
+        placeData: place
+      });
+    } catch (e) {
+      console.warn('Backend history sync notice (saved locally):', e.message);
+    }
+  };
 
   // Load places live from MongoDB on startup
   useEffect(() => {
@@ -150,7 +196,9 @@ export default function App() {
       setAiGeneratingPlaceName(query);
       const res = await generateLivePlaceApi(query);
       if (res?.place) {
-        // Do NOT store or add to the webpage places list; open directly in modal viewer only
+        // Record in search history
+        recordPlaceSearchHistory(res.place);
+        // Open directly in modal viewer
         setActiveView('home');
         setSelectedPlace(res.place);
       }
@@ -220,7 +268,10 @@ export default function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         placesList={placesList}
-        onSelectPlace={(place) => setSelectedPlace(place)}
+        onSelectPlace={(place) => {
+          recordPlaceSearchHistory(place);
+          setSelectedPlace(place);
+        }}
         onLoginClick={() => {
           setUserRole('traveler');
           setIsLoginModalOpen(true);
@@ -259,7 +310,11 @@ export default function App() {
             else setActiveView('home');
           }}
           onExploreDestinations={() => setActiveView('home')}
-          onSelectPlace={(place) => setSelectedPlace(place)}
+          onSelectPlace={(place) => {
+            recordPlaceSearchHistory(place);
+            setSelectedPlace(place);
+          }}
+          onRecordSearch={recordPlaceSearchHistory}
         />
       ) : (
         <>

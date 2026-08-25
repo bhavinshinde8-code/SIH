@@ -201,3 +201,70 @@ export const generateLivePlaceApi = async (query) => {
   return data;
 };
 
+// ==========================================
+// 4. User Search & Travel History Database APIs
+// ==========================================
+
+export const fetchUserHistoryApi = async (userIdentifier) => {
+  const response = await fetch(`${API_URL}/history/${encodeURIComponent(userIdentifier)}`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch user history');
+  }
+  return data;
+};
+
+export const saveUserHistoryApi = async (historyData) => {
+  const response = await fetch(`${API_URL}/history`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(historyData),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to save history');
+  }
+  return data;
+};
+
+export const deleteUserHistoryApi = async (id) => {
+  const response = await fetch(`${API_URL}/history/${id}`, {
+    method: 'DELETE',
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to delete history item');
+  }
+  return data;
+};
+
+export const clearUserHistoryApi = async (userIdentifier) => {
+  const response = await fetch(`${API_URL}/history/clear/${encodeURIComponent(userIdentifier)}`, {
+    method: 'DELETE',
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to clear user history');
+  }
+  return data;
+};
+
+export const updateUserRewardPointsApi = async (userIdentifier, points) => {
+  const response = await fetch(`${API_URL}/history/points/${encodeURIComponent(userIdentifier)}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ points }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update reward points');
+  }
+  return data;
+};
+
+
+
