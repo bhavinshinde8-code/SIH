@@ -38,8 +38,14 @@ export default function Navbar({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef(null);
 
+  // If regular user/visitor, only allow searching published places (isPublished !== false)
+  // If admin, allow searching all places
+  const accessiblePlaces = currentAdmin
+    ? placesList
+    : placesList.filter((p) => p.isPublished !== false);
+
   // Compute live search suggestions based on spelling/prefix/fuzzy matching
-  const suggestions = searchTouristDestinations(searchQuery, placesList).slice(0, 6);
+  const suggestions = searchTouristDestinations(searchQuery, accessiblePlaces).slice(0, 6);
 
   // Close dropdown when clicking outside
   useEffect(() => {

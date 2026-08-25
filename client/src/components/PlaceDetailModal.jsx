@@ -22,13 +22,28 @@ import {
   Square,
   Pause,
   RotateCcw,
+  Image as ImageIcon,
+  ImageOff,
+  PlusCircle,
+  Check,
+  Loader2,
 } from 'lucide-react';
 
-export default function PlaceDetailModal({ place, onClose }) {
+export default function PlaceDetailModal({
+  place,
+  onClose,
+  isAdmin = false,
+  onSaveToSiteInfo,
+  isSavingSite = false,
+  isSavedToSite = false
+}) {
   if (!place) return null;
 
   // Detailed Description accordion/dropdown toggle state
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+
+  // Publish state when adding to sites (accessible to users)
+  const [publishToUsers, setPublishToUsers] = useState(true);
 
   // Audio narration state for Detailed Description
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -342,13 +357,36 @@ export default function PlaceDetailModal({ place, onClose }) {
 
               {/* Active Era Card */}
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
-                {currentTimelineEra.imageUrl && (
+                {currentTimelineEra.imageUrl && currentTimelineEra.imageUrl.trim() !== '' ? (
                   <img
                     src={currentTimelineEra.imageUrl}
                     alt={currentTimelineEra.title}
-                    className="w-full sm:w-36 h-28 rounded-lg object-cover bg-slate-800 shrink-0"
+                    className="w-full sm:w-36 h-28 rounded-lg object-cover bg-slate-800 shrink-0 border border-slate-700/60"
+                    onError={(e) => {
+                      // If the provided real URL fails to load, gracefully display fallback
+                      e.target.style.display = 'none';
+                      if (e.target.nextElementSibling) {
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }
+                    }}
                   />
-                )}
+                ) : null}
+
+                {/* Graceful 'Image Not Available' Fallback Box */}
+                <div
+                  className={`w-full sm:w-36 h-28 rounded-lg bg-slate-950/70 border border-dashed border-slate-700/80 flex-col items-center justify-center p-3 text-center shrink-0 gap-1.5 ${
+                    currentTimelineEra.imageUrl && currentTimelineEra.imageUrl.trim() !== '' ? 'hidden' : 'flex'
+                  }`}
+                >
+                  <ImageOff className="w-6 h-6 text-amber-400/70" />
+                  <span className="text-[10px] font-bold text-slate-400 leading-tight">
+                    Real Image Not Available
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono">
+                    {currentTimelineEra.year} Era
+                  </span>
+                </div>
+
                 <div className="space-y-1 text-center sm:text-left flex-1">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs font-mono">
@@ -469,13 +507,60 @@ export default function PlaceDetailModal({ place, onClose }) {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end gap-3 border-t border-slate-800">
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition"
-            >
-              Close
-            </button>
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800">
+            {/* Admin Quick Save to Sites with Publish Toggle */}
+            {isAdmin && onSaveToSiteInfo ? (
+              <div className="w-full sm:w-auto flex flex-wrap items-center gap-3">
+                {isSavedToSite ? (
+                  <span className="px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Added to Sites Database!</span>
+                  </span>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3 bg-slate-950/70 p-1.5 px-3 rounded-2xl border border-slate-800">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={publishToUsers}
+                        onChange={(e) => setPublishToUsers(e.target.checked)}
+                        className="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700 focus:ring-0 accent-amber-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-200">
+                        Publish <span className="text-[11px] text-slate-400 font-normal">(Accessible to Users on Website)</span>
+                      </span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => onSaveToSiteInfo({ ...place, isTopTrending: publishToUsers })}
+                      disabled={isSavingSite}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wide shadow-md shadow-amber-500/20 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50"
+                    >
+                      {isSavingSite ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Saving to Sites...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          <span>Add to Sites</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : <div />}
+
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              <button
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

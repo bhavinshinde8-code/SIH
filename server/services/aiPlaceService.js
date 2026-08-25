@@ -52,19 +52,19 @@ export const generateTouristPlaceWithAI = async (placeName) => {
         {
           "year": "Historical Era / Year (e.g., 1000 CE)",
           "title": "Origin / Construction Milestone",
-          "imageUrl": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80",
+          "imageUrl": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80 (OR leave as empty string \"\" if verified real photo is not available)",
           "description": "Historical construction narrative"
         },
         {
           "year": "Later Era (e.g., 1750 CE)",
           "title": "Restoration / Historical Battle",
-          "imageUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80",
+          "imageUrl": "Leave as empty string \"\" if verified real photo of this era is not available",
           "description": "Historical development during empire reign"
         },
         {
           "year": "Modern Era (e.g., 1951 CE)",
           "title": "National Heritage Preservation",
-          "imageUrl": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+          "imageUrl": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80 (OR \"\" if not available)",
           "description": "Archaeological Survey preservation and modern tourist facilities."
         }
       ],
@@ -111,29 +111,47 @@ export const generateTouristPlaceWithAI = async (placeName) => {
     }
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+  // Active available models
+  const modelsToTry = [
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash'
+  ];
 
-    let rawText = response.text || '{}';
-    // Clean any accidental markdown backticks
-    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  let lastError = null;
 
-    const parsedData = JSON.parse(rawText);
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[Gemini AI] 🚀 Generating place with model: ${modelName}...`);
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
 
-    // Fallback image if AI provides empty string
-    if (!parsedData.image) {
-      parsedData.image = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80';
+      let rawText = response.text || '{}';
+      // Clean any accidental markdown backticks
+      rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      const parsedData = JSON.parse(rawText);
+
+      // Fallback image if AI provides empty string
+      if (!parsedData.image) {
+        parsedData.image = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80';
+      }
+
+      console.log(`[Gemini AI] ✅ Successfully generated content using: ${modelName}`);
+      parsedData._aiModelUsed = modelName;
+
+      return parsedData;
+    } catch (err) {
+      console.warn(`[Gemini AI] ⚠️ Model ${modelName} returned: ${err.message}. Checking next option...`);
+      lastError = err;
     }
-
-    return parsedData;
-  } catch (error) {
-    console.error('Gemini AI Generation Error:', error.message);
-    throw new Error(`AI generation failed: ${error.message}`);
   }
+
+  console.error('All Gemini AI model options failed:', lastError?.message);
+  throw new Error(`AI generation rate limit reached: Please wait 30 seconds or update GEMINI_API_KEY in server/.env`);
 };

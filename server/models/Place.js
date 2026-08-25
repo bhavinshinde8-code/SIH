@@ -55,6 +55,10 @@ const placeSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isPublished: {
+      type: Boolean,
+      default: true,
+    },
     hiddenHistory: {
       type: String,
       default: '',

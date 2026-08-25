@@ -42,16 +42,91 @@ export const createPlace = async (req, res) => {
       location,
       image,
       description,
+      detailedDescription,
       bestTime,
       host,
       highlights,
       isTopTrending,
+      isPublished,
       hiddenHistory,
       historyContent,
       visualTimeline,
       nearbyPlaces,
       coRelatedPlaces,
     } = req.body;
+
+    // Normalize and sanitize historyContent array to guarantee schema objects
+    const sanitizedHistoryContent = Array.isArray(historyContent)
+      ? historyContent
+          .map((item) => {
+            if (typeof item === 'string') {
+              return { language: 'English', mediaType: 'audio', title: item, mediaUrl: '', narrator: '', duration: '' };
+            }
+            if (item && typeof item === 'object') {
+              return {
+                language: item.language || 'English',
+                mediaType: ['audio', 'video', 'text'].includes(item.mediaType) ? item.mediaType : 'audio',
+                title: item.title || '',
+                mediaUrl: item.mediaUrl || '',
+                narrator: item.narrator || '',
+                duration: item.duration || '',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+
+    // Normalize visualTimeline array
+    const sanitizedVisualTimeline = Array.isArray(visualTimeline)
+      ? visualTimeline
+          .map((item) => {
+            if (item && typeof item === 'object') {
+              return {
+                year: item.year || '',
+                title: item.title || '',
+                imageUrl: item.imageUrl || '',
+                description: item.description || '',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+
+    // Normalize nearbyPlaces array
+    const sanitizedNearbyPlaces = Array.isArray(nearbyPlaces)
+      ? nearbyPlaces
+          .map((item) => {
+            if (item && typeof item === 'object') {
+              return {
+                name: item.name || '',
+                distance: item.distance || '',
+                imageUrl: item.imageUrl || '',
+                category: item.category || '',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+
+    // Normalize coRelatedPlaces array
+    const sanitizedCoRelatedPlaces = Array.isArray(coRelatedPlaces)
+      ? coRelatedPlaces
+          .map((item) => {
+            if (item && typeof item === 'object') {
+              return {
+                name: item.name || '',
+                circuit: item.circuit || '',
+                imageUrl: item.imageUrl || '',
+                connection: item.connection || '',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
 
     const newPlace = new Place({
       name,
@@ -67,11 +142,12 @@ export const createPlace = async (req, res) => {
       host: host || 'Nashik Municipal Tourism Board',
       highlights: highlights || [],
       isTopTrending: isTopTrending !== undefined ? Boolean(isTopTrending) : true,
+      isPublished: isPublished !== undefined ? Boolean(isPublished) : (isTopTrending !== undefined ? Boolean(isTopTrending) : true),
       hiddenHistory: hiddenHistory || '',
-      historyContent: Array.isArray(historyContent) ? historyContent : [],
-      visualTimeline: Array.isArray(visualTimeline) ? visualTimeline : [],
-      nearbyPlaces: Array.isArray(nearbyPlaces) ? nearbyPlaces : [],
-      coRelatedPlaces: Array.isArray(coRelatedPlaces) ? coRelatedPlaces : [],
+      historyContent: sanitizedHistoryContent,
+      visualTimeline: sanitizedVisualTimeline,
+      nearbyPlaces: sanitizedNearbyPlaces,
+      coRelatedPlaces: sanitizedCoRelatedPlaces,
       createdBy: req.admin._id,
     });
 
@@ -107,20 +183,84 @@ export const updatePlace = async (req, res) => {
       if (req.body.isTopTrending !== undefined) {
         place.isTopTrending = Boolean(req.body.isTopTrending);
       }
+      if (req.body.isPublished !== undefined) {
+        place.isPublished = Boolean(req.body.isPublished);
+      }
       if (req.body.hiddenHistory !== undefined) {
         place.hiddenHistory = req.body.hiddenHistory;
       }
       if (req.body.historyContent !== undefined) {
-        place.historyContent = req.body.historyContent;
+        place.historyContent = Array.isArray(req.body.historyContent)
+          ? req.body.historyContent
+              .map((item) => {
+                if (typeof item === 'string') {
+                  return { language: 'English', mediaType: 'audio', title: item, mediaUrl: '', narrator: '', duration: '' };
+                }
+                if (item && typeof item === 'object') {
+                  return {
+                    language: item.language || 'English',
+                    mediaType: ['audio', 'video', 'text'].includes(item.mediaType) ? item.mediaType : 'audio',
+                    title: item.title || '',
+                    mediaUrl: item.mediaUrl || '',
+                    narrator: item.narrator || '',
+                    duration: item.duration || '',
+                  };
+                }
+                return null;
+              })
+              .filter(Boolean)
+          : [];
       }
       if (req.body.visualTimeline !== undefined) {
-        place.visualTimeline = req.body.visualTimeline;
+        place.visualTimeline = Array.isArray(req.body.visualTimeline)
+          ? req.body.visualTimeline
+              .map((item) => {
+                if (item && typeof item === 'object') {
+                  return {
+                    year: item.year || '',
+                    title: item.title || '',
+                    imageUrl: item.imageUrl || '',
+                    description: item.description || '',
+                  };
+                }
+                return null;
+              })
+              .filter(Boolean)
+          : [];
       }
       if (req.body.nearbyPlaces !== undefined) {
-        place.nearbyPlaces = req.body.nearbyPlaces;
+        place.nearbyPlaces = Array.isArray(req.body.nearbyPlaces)
+          ? req.body.nearbyPlaces
+              .map((item) => {
+                if (item && typeof item === 'object') {
+                  return {
+                    name: item.name || '',
+                    distance: item.distance || '',
+                    imageUrl: item.imageUrl || '',
+                    category: item.category || '',
+                  };
+                }
+                return null;
+              })
+              .filter(Boolean)
+          : [];
       }
       if (req.body.coRelatedPlaces !== undefined) {
-        place.coRelatedPlaces = req.body.coRelatedPlaces;
+        place.coRelatedPlaces = Array.isArray(req.body.coRelatedPlaces)
+          ? req.body.coRelatedPlaces
+              .map((item) => {
+                if (item && typeof item === 'object') {
+                  return {
+                    name: item.name || '',
+                    circuit: item.circuit || '',
+                    imageUrl: item.imageUrl || '',
+                    connection: item.connection || '',
+                  };
+                }
+                return null;
+              })
+              .filter(Boolean)
+          : [];
       }
 
       const updatedPlace = await place.save();

@@ -162,6 +162,37 @@ export default function App() {
     }
   };
 
+  // Save AI Generated Place into Database / Site Info
+  const [isSavingAiSite, setIsSavingAiSite] = useState(false);
+  const [savedAiSiteIds, setSavedAiSiteIds] = useState(new Set());
+
+  const handleSaveAiPlaceToSiteInfo = async (placeToSave) => {
+    if (!currentAdmin?.token) {
+      alert('Admin authentication required to add destination to database.');
+      return;
+    }
+    try {
+      setIsSavingAiSite(true);
+      // Clean temporary AI id if present so MongoDB generates a real _id
+      const { _id, id, _aiModelUsed, ...cleanPlaceData } = placeToSave;
+      const saved = await createPlaceApi(cleanPlaceData, currentAdmin.token);
+      setPlacesList((prev) => [saved, ...prev]);
+      setSavedAiSiteIds((prev) => new Set(prev).add(placeToSave.name));
+      // Update selectedPlace to the newly saved DB record
+      setSelectedPlace(saved);
+      const isPublished = placeToSave.isTopTrending !== false;
+      alert(
+        isPublished
+          ? `✅ "${placeToSave.name}" added to Sites & Published to visitors successfully!`
+          : `✅ "${placeToSave.name}" added to Sites database as Draft/Hidden (not visible on homepage).`
+      );
+    } catch (err) {
+      alert(`Error adding to database: ${err.message}`);
+    } finally {
+      setIsSavingAiSite(false);
+    }
+  };
+
   return (
     <div className={`min-h-screen font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-300 ${theme} ${
       theme === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'
@@ -252,6 +283,10 @@ export default function App() {
           <PlaceDetailModal
             place={selectedPlace}
             onClose={() => setSelectedPlace(null)}
+            isAdmin={!!currentAdmin}
+            onSaveToSiteInfo={handleSaveAiPlaceToSiteInfo}
+            isSavingSite={isSavingAiSite}
+            isSavedToSite={selectedPlace ? savedAiSiteIds.has(selectedPlace.name) : false}
           />
 
           {/* 6. Contact & Footer */}
