@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import DestinationsGrid from './components/DestinationsGrid';
 import FeaturesSection from './components/FeaturesSection';
+import DisclaimerSection from './components/DisclaimerSection';
 import PlaceDetailModal from './components/PlaceDetailModal';
 import LoginModal from './components/LoginModal';
 import AdminDashboard from './components/AdminDashboard';
@@ -332,7 +333,10 @@ export default function App() {
           />
 
           {/* 4. Features Section */}
-          <FeaturesSection features={features} />
+          <FeaturesSection features={features} theme={theme} />
+
+          {/* 4.1 Platform Disclaimers */}
+          <DisclaimerSection theme={theme} />
 
           {/* 5. Destination Details Modal */}
           <PlaceDetailModal

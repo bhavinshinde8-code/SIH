@@ -23,10 +23,14 @@ import {
   Pause,
   RotateCcw,
   Image as ImageIcon,
+  Navigation,
   ImageOff,
   PlusCircle,
   Check,
   Loader2,
+  Eye,
+  Layers,
+  Map as MapIcon,
 } from 'lucide-react';
 
 export default function PlaceDetailModal({
@@ -48,6 +52,9 @@ export default function PlaceDetailModal({
   // Audio narration state for Detailed Description
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isPausedAudio, setIsPausedAudio] = useState(false);
+
+  // 3D Map / Satellite / Street View toggle ('none' | 'satellite' | 'map' | 'streetview')
+  const [activeMapView, setActiveMapView] = useState(null);
 
   // Cleanup speech on modal close or unmount
   useEffect(() => {
@@ -207,6 +214,95 @@ export default function PlaceDetailModal({
                 <span>{place.host || 'Registered Tourism Trust / ASI'}</span>
               </span>
             </div>
+          </div>
+
+          {/* Interactive 3D / Satellite Map & Street View Explorer */}
+          <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                  <MapIcon className="w-4 h-4 text-amber-400" />
+                  <span>3D Map & Street View Navigation</span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Explore satellite terrain, live 3D contours, and navigate street-level vistas.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setActiveMapView(activeMapView === 'satellite' ? null : 'satellite')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                    activeMapView === 'satellite'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>3D / Satellite</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMapView(activeMapView === 'streetview' ? null : 'streetview')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                    activeMapView === 'streetview'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Street View 360°</span>
+                </button>
+
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${place.name}, ${place.location || 'India'}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 hover:border-amber-500 flex items-center gap-1.5 transition"
+                  title="Open in Google Maps"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>Navigate</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Embedded Live Map View Container */}
+            {activeMapView && (
+              <div className="relative w-full h-72 sm:h-80 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 animate-in fade-in zoom-in-95 duration-200">
+                <iframe
+                  title={`${place.name} 3D Map Explorer`}
+                  width="100%"
+                  height="100%"
+                  className="w-full h-full border-0"
+                  loading="lazy"
+                  allowFullScreen
+                  src={
+                    activeMapView === 'satellite'
+                      ? `https://maps.google.com/maps?q=${encodeURIComponent(`${place.name}, ${place.location || 'India'}`)}&t=k&z=17&ie=UTF8&iwloc=&output=embed`
+                      : `https://maps.google.com/maps?q=${encodeURIComponent(`${place.name}, ${place.location || 'India'}`)}&t=h&z=18&layer=c&cbll=&output=embed`
+                  }
+                />
+
+                <div className="absolute top-2 right-2 flex items-center gap-2">
+                  <a
+                    href={
+                      activeMapView === 'streetview'
+                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.name}, ${place.location || 'India'}`)}`
+                        : `https://earth.google.com/web/search/${encodeURIComponent(`${place.name}, ${place.location || 'India'}`)}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-md text-[11px] font-bold text-amber-400 border border-slate-700/80 hover:bg-slate-900 flex items-center gap-1 shadow-md"
+                  >
+                    <span>{activeMapView === 'streetview' ? 'Open Full 360°' : 'Open in Google Earth 3D'}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Highlights / Key Features */}
@@ -422,26 +518,60 @@ export default function PlaceDetailModal({
           {/* 3. Nearby Places To Visit */}
           {nearbyPlaces.length > 0 && (
             <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                <Compass className="w-4 h-4 text-amber-400" />
-                <span>Nearby Places To Visit (Within 15km)</span>
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-amber-400" />
+                  <span>Nearby Places To Visit (Within 15km)</span>
+                </h4>
+                <span className="text-[10px] text-slate-400">Click to navigate</span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {nearbyPlaces.map((np, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
-                    {np.imageUrl ? (
-                      <img src={np.imageUrl} alt={np.name} className="w-12 h-12 rounded-lg object-cover bg-slate-800 shrink-0" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-                        <MapPin className="w-5 h-5" />
+                {nearbyPlaces.map((np, idx) => {
+                  // Construct destination query for Google Maps navigation
+                  const navQuery = encodeURIComponent(`${np.name}, ${place.location || 'India'}`);
+                  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${navQuery}`;
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 transition-all flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                        {np.imageUrl ? (
+                          <img
+                            src={np.imageUrl}
+                            alt={np.name}
+                            className="w-12 h-12 rounded-lg object-cover bg-slate-800 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                            <MapPin className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div className="overflow-hidden">
+                          <h5 className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition-colors">
+                            {np.name}
+                          </h5>
+                          <p className="text-[11px] text-amber-400 truncate">
+                            {np.distance} • <span className="text-slate-400">{np.category}</span>
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <div className="overflow-hidden">
-                      <h5 className="text-xs font-bold text-white truncate">{np.name}</h5>
-                      <p className="text-[11px] text-amber-400">{np.distance} • <span className="text-slate-400">{np.category}</span></p>
+
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Navigate to ${np.name}`}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 hover:border-amber-500 text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-all shadow-sm"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        <span className="hidden xs:inline">Directions</span>
+                      </a>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

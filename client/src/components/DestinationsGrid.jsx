@@ -99,30 +99,47 @@ export default function DestinationsGrid({
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {place.nearbyPlaces.slice(0, 2).map((near, idx) => (
-                          <div
-                            key={idx}
-                            className="p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center gap-2"
-                          >
-                            {near.imageUrl ? (
-                              <img
-                                src={near.imageUrl}
-                                alt={near.name}
-                                className="w-8 h-8 rounded-lg object-cover bg-slate-800 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shrink-0">
-                                📍
+                        {place.nearbyPlaces.slice(0, 2).map((near, idx) => {
+                          const navQuery = encodeURIComponent(`${near.name}, ${place.location || 'India'}`);
+                          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${navQuery}`;
+
+                          return (
+                            <a
+                              key={idx}
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Navigate to ${near.name}`}
+                              className="p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-amber-500/50 hover:bg-slate-900/90 flex items-center justify-between gap-2 transition group/np"
+                            >
+                              <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                                {near.imageUrl ? (
+                                  <img
+                                    src={near.imageUrl}
+                                    alt={near.name}
+                                    className="w-8 h-8 rounded-lg object-cover bg-slate-800 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shrink-0">
+                                    📍
+                                  </div>
+                                )}
+                                <div className="overflow-hidden">
+                                  <h6 className="text-[11px] font-bold text-slate-200 group-hover/np:text-amber-400 truncate">
+                                    {near.name}
+                                  </h6>
+                                  <p className="text-[10px] text-amber-400/90 font-mono truncate">
+                                    {near.distance || 'Nearby'}
+                                  </p>
+                                </div>
                               </div>
-                            )}
-                            <div className="overflow-hidden min-w-0">
-                              <p className="text-xs font-semibold text-slate-200 truncate">{near.name}</p>
-                              <p className="text-[10px] text-amber-400 font-medium truncate">
-                                {near.distance} • {near.category || 'Spot'}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                              <span className="text-[10px] text-slate-400 group-hover/np:text-amber-400 font-bold shrink-0">
+                                ↗
+                              </span>
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
