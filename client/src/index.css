@@ -253,7 +253,29 @@
   background: rgba(245, 158, 11, 0.35);
   border-radius: 9999px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.65);
+/* Google Translate Styling Polish */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
 }
+
+body {
+  top: 0px !important;
+}
+
+.skiptranslate:not(.notranslate) {
+  display: none !important;
+}
+
+.goog-tooltip,
+.goog-tooltip:hover {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 

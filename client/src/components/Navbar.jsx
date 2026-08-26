@@ -16,6 +16,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { searchTouristDestinations } from '../data/indiaWebPlaces';
+import GoogleTranslateWidget from './GoogleTranslateWidget';
 
 export default function Navbar({
   searchQuery,
@@ -263,8 +264,11 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Right Action: Theme Toggle + User / Admin state or Login button */}
-        <div className="flex items-center gap-3">
+        {/* Right Action: Language Switcher + Theme Toggle + User / Admin state or Login button */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Global Multi-Language Switcher (Google Translate) */}
+          <GoogleTranslateWidget theme={theme} />
+
           {/* Light / Dark Mode Toggle Button on Right Top Side */}
           {onToggleTheme && (
             <button
