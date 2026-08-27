@@ -338,16 +338,6 @@ export default function App() {
           {/* 4.1 Platform Disclaimers */}
           <DisclaimerSection theme={theme} />
 
-          {/* 5. Destination Details Modal */}
-          <PlaceDetailModal
-            place={selectedPlace}
-            onClose={() => setSelectedPlace(null)}
-            isAdmin={!!currentAdmin}
-            onSaveToSiteInfo={handleSaveAiPlaceToSiteInfo}
-            isSavingSite={isSavingAiSite}
-            isSavedToSite={selectedPlace ? savedAiSiteIds.has(selectedPlace.name) : false}
-          />
-
           {/* 6. Contact & Footer */}
           <Footer
             onHostDashboardClick={() => {
@@ -361,6 +351,17 @@ export default function App() {
           />
         </>
       )}
+
+      {/* 5. Destination Details Modal — rendered outside the view switch so it also
+          opens over the Admin/User dashboards (e.g. right after a QR scan). */}
+      <PlaceDetailModal
+        place={selectedPlace}
+        onClose={() => setSelectedPlace(null)}
+        isAdmin={!!currentAdmin}
+        onSaveToSiteInfo={handleSaveAiPlaceToSiteInfo}
+        isSavingSite={isSavingAiSite}
+        isSavedToSite={selectedPlace ? savedAiSiteIds.has(selectedPlace.name) : false}
+      />
 
       {/* 7. Auth / Role Modal (Connected to MongoDB with SMS OTP) */}
       <LoginModal

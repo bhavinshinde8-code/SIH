@@ -8,7 +8,7 @@ export default function DisclaimerSection({ theme = 'dark' }) {
     {
       icon: AlertTriangle,
       title: 'Team Pheonix Ai & Information Disclaimer',
-      desc: 'In AI generated card there might be some error in information and in image so if it hurt anyone then Team phoenix is not responsible for it.'
+      desc: 'AI generated images are prone to errors in images. It is a purely technical glitch and not intented to harm the sentiments of any indivisual or community.'
     },
     {
       icon: AlertTriangle,

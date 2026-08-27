@@ -1,4 +1,5 @@
 import Place from '../models/Place.js';
+import { buildQrValue, generateQrDataUrl, generateQrBuffer } from '../utils/qr.util.js';
 
 // @desc    Get all historical tourism places from MongoDB
 // @route   GET /api/places
@@ -148,6 +149,10 @@ export const createPlace = async (req, res) => {
       visualTimeline: sanitizedVisualTimeline,
       nearbyPlaces: sanitizedNearbyPlaces,
       coRelatedPlaces: sanitizedCoRelatedPlaces,
+      // Auto-generate the QR code value the moment a site is created, so an
+      // admin never has to remember a separate "generate QR" step — the
+      // Download QR button on the edit screen works immediately.
+      qrCodeValue: buildQrValue(name),
       createdBy: req.admin._id,
     });
 
@@ -353,6 +358,96 @@ export const generateLivePlace = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in generateLivePlace:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+// @desc    Generate (or regenerate) a QR code for a place
+// @route   POST /api/places/:id/qr
+// @access  Private (Admin only)
+export const generatePlaceQr = async (req, res) => {
+  try {
+    const place = await Place.findById(req.params.id);
+ 
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+ 
+    place.qrCodeValue = buildQrValue(place.name);
+    const updatedPlace = await place.save();
+ 
+    const qrDataUrl = await generateQrDataUrl(updatedPlace.qrCodeValue);
+ 
+    res.json({ place: updatedPlace, qrDataUrl });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+ 
+// @desc    Get a base64 QR preview for a place that already has a QR value
+// @route   GET /api/places/:id/qr/preview
+// @access  Public
+export const getPlaceQrPreview = async (req, res) => {
+  try {
+    const place = await Place.findById(req.params.id);
+ 
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+ 
+    if (!place.qrCodeValue) {
+      return res.status(400).json({ message: 'This place has no QR code yet' });
+    }
+ 
+    const qrDataUrl = await generateQrDataUrl(place.qrCodeValue);
+    res.json({ qrDataUrl });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+ 
+// @desc    Download a place's QR code as a PNG file
+// @route   GET /api/places/:id/qr/download
+// @access  Public
+export const downloadPlaceQr = async (req, res) => {
+  try {
+    const place = await Place.findById(req.params.id);
+ 
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+ 
+    if (!place.qrCodeValue) {
+      return res.status(400).json({ message: 'This place has no QR code yet' });
+    }
+ 
+    const buffer = await generateQrBuffer(place.qrCodeValue);
+    const filename = place.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+ 
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Disposition': `attachment; filename="${filename}-qr.png"`,
+    });
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+ 
+// @desc    Resolve a scanned QR value to its place (used by the QR scanner)
+// @route   GET /api/places/qr/lookup/:value
+// @access  Public
+export const lookupPlaceByQr = async (req, res) => {
+  try {
+    const { value } = req.params;
+ 
+    const place = await Place.findOne({ qrCodeValue: value, isPublished: true });
+ 
+    if (!place) {
+      return res.status(404).json({ message: 'No place found for that QR code.' });
+    }
+ 
+    res.json(place);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

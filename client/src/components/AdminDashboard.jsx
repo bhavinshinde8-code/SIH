@@ -31,7 +31,7 @@ import {
   ImageOff,
   Globe
 } from 'lucide-react';
-import { fetchAdminUsersApi } from '../services/api';
+import { fetchAdminUsersApi, getPlaceQrPreviewApi, generatePlaceQrApi, getPlaceQrDownloadUrl } from '../services/api';
 
 export default function AdminDashboard({
   places = [],
@@ -54,6 +54,54 @@ export default function AdminDashboard({
   const [editingPlace, setEditingPlace] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
+
+  // Live QR preview + download state for the "Advanced Site Features" panel
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState('');
+
+  useEffect(() => {
+    const placeId = editingPlace?._id || editingPlace?.id;
+    if (!placeId) {
+      setQrDataUrl(null);
+      setQrError('');
+      return;
+    }
+    let cancelled = false;
+    setQrLoading(true);
+    setQrError('');
+    getPlaceQrPreviewApi(placeId)
+      .then((data) => {
+        if (!cancelled) setQrDataUrl(data.qrDataUrl);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setQrDataUrl(null);
+          setQrError(err.message || 'This place has no QR code yet.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setQrLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingPlace?._id, editingPlace?.id]);
+
+  async function handleGenerateQr() {
+    const placeId = editingPlace?._id || editingPlace?.id;
+    if (!placeId || !adminUser?.token) return;
+    setQrLoading(true);
+    setQrError('');
+    try {
+      const { qrDataUrl: freshQr } = await generatePlaceQrApi(placeId, adminUser.token);
+      setQrDataUrl(freshQr);
+    } catch (err) {
+      setQrError(err.message || 'Failed to generate QR code');
+    } finally {
+      setQrLoading(false);
+    }
+  }
   const [saveAllSuccess, setSaveAllSuccess] = useState(false);
 
   // Selected Site & Custom Config Data
@@ -1283,22 +1331,55 @@ export default function AdminDashboard({
 
                   {/* QR Code Section */}
                   <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="bg-white p-2 rounded-xl shrink-0">
-                      <svg className="w-16 h-16" viewBox="0 0 100 100" fill="black">
-                        <path d="M0 0h30v30H0zM5 5h20v20H5zM10 10h10v10H10zM70 0h30v30H70zM75 5h20v20H75zM80 10h10v10H80zM0 70h30v30H0zM5 75h20v20H5zM10 80h10v10H10zM35 10h10v10H35zM50 10h10v10H50zM35 25h25v10H35zM10 35h10v25H10zM25 35h10v10H25zM25 50h10v10H25zM70 35h10v10H70zM85 35h15v10H85zM70 50h25v10H70zM35 70h10v25H35zM50 70h10v10H50zM50 85h10v10H50zM70 70h10v10H70zM85 70h15v25H85zM70 85h10v10H70z" />
-                      </svg>
+                    <div className="bg-white p-2 rounded-xl shrink-0 w-20 h-20 flex items-center justify-center">
+                      {qrLoading ? (
+                        <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+                      ) : qrDataUrl ? (
+                        <img src={qrDataUrl} alt={`QR code for ${editingPlace.name}`} className="w-16 h-16 object-contain" />
+                      ) : (
+                        <svg className="w-16 h-16 opacity-20" viewBox="0 0 100 100" fill="black">
+                          <path d="M0 0h30v30H0zM5 5h20v20H5zM10 10h10v10H10zM70 0h30v30H70zM75 5h20v20H75zM80 10h10v10H80zM0 70h30v30H0zM5 75h20v20H5zM10 80h10v10H10zM35 10h10v10H35zM50 10h10v10H50zM35 25h25v10H35zM10 35h10v25H10zM25 35h10v10H25zM25 50h10v10H25zM70 35h10v10H70zM85 35h15v10H85zM70 50h25v10H70zM35 70h10v25H35zM50 70h10v10H50zM50 85h10v10H50zM70 70h10v10H70zM85 70h15v25H85zM70 85h10v10H70z" />
+                        </svg>
+                      )}
                     </div>
                     <div className="space-y-1.5 text-center sm:text-left">
                       <p className="text-xs text-slate-300">
                         Visitors scan this from their dashboard to jump straight to this site.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => alert(`Downloading QR Code for ${editingPlace.name}`)}
-                        className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition"
-                      >
-                        Download QR
-                      </button>
+                      {editingPlace.qrCodeValue && (
+                        <p className="text-[10px] font-mono text-slate-500 break-all">{editingPlace.qrCodeValue}</p>
+                      )}
+                      {qrError && <p className="text-[11px] text-rose-400">{qrError}</p>}
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
+                        {qrDataUrl ? (
+                          <a
+                            href={getPlaceQrDownloadUrl(editingPlace._id || editingPlace.id)}
+                            download
+                            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition"
+                          >
+                            Download QR
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleGenerateQr}
+                            disabled={qrLoading}
+                            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition disabled:opacity-50"
+                          >
+                            {qrLoading ? 'Generating…' : 'Generate QR'}
+                          </button>
+                        )}
+                        {qrDataUrl && (
+                          <button
+                            type="button"
+                            onClick={handleGenerateQr}
+                            disabled={qrLoading}
+                            className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs shadow transition disabled:opacity-50"
+                          >
+                            Regenerate
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

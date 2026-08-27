@@ -184,6 +184,51 @@ export const deletePlaceApi = async (id, token) => {
   return data;
 };
 
+// ==========================================
+// 3b. Place QR Code API
+// ==========================================
+
+// Base64 QR preview for a place that already has a QR value (public)
+export const getPlaceQrPreviewApi = async (id) => {
+  const response = await fetch(`${API_URL}/places/${id}/qr/preview`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to load QR preview');
+  }
+  return data; // { qrDataUrl }
+};
+
+// (Re)generates a place's QR value — admin only. Used as a one-click
+// backfill for older places saved before QR codes were auto-generated.
+export const generatePlaceQrApi = async (id, token) => {
+  const response = await fetch(`${API_URL}/places/${id}/qr`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to generate QR code');
+  }
+  return data; // { place, qrDataUrl }
+};
+
+// Direct download URL for a place's QR PNG — hand this straight to an
+// <a href download> so the browser saves the file with one click.
+export const getPlaceQrDownloadUrl = (id) => `${API_URL}/places/${id}/qr/download`;
+
+// Resolve a value decoded from a scanned QR code to the place it belongs
+// to (the place must have been given that QR value by an admin).
+export const lookupPlaceByQrApi = async (qrValue) => {
+  const response = await fetch(`${API_URL}/places/qr/lookup/${encodeURIComponent(qrValue)}`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'QR code not recognized');
+  }
+  return data; // place document
+};
+
 // Generate live destination using Google Gemini AI
 export const generateLivePlaceApi = async (query) => {
   const response = await fetch(`${API_URL}/places/generate-live`, {

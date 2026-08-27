@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 
+
 const placeSchema = new mongoose.Schema(
   {
+    
     name: {
       type: String,
       required: true,
@@ -63,6 +65,12 @@ const placeSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    qrCodeValue:{
+  type: String,
+  unique: true,
+  sparse: true,
+  index: true,
+},
     historyContent: [
       {
         language: { type: String, default: 'English' },
@@ -105,6 +113,7 @@ const placeSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
+  
 );
 
 const Place = mongoose.model('Place', placeSchema);
