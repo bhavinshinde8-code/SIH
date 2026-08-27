@@ -17,9 +17,7 @@ import {
   ChevronUp,
   BookOpen,
   Volume2,
-  VolumeX,
   Play,
-  Square,
   Pause,
   RotateCcw,
   Image as ImageIcon,
@@ -52,70 +50,154 @@ export default function PlaceDetailModal({
   // Audio narration state for Detailed Description
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isPausedAudio, setIsPausedAudio] = useState(false);
+  const audioPlayerRef = React.useRef(null);
 
-  // 3D Map / Satellite / Street View toggle ('none' | 'satellite' | 'map' | 'streetview')
-  const [activeMapView, setActiveMapView] = useState(null);
-
-  // Cleanup speech on modal close or unmount
+  // Cleanup audio on modal close or unmount
   useEffect(() => {
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
       }
     };
   }, []);
 
-  const handleTogglePlayAudio = () => {
-    if (!('speechSynthesis' in window)) {
-      alert('Text-to-speech audio reader is not supported in this browser.');
-      return;
+  const getActiveLanguage = () => {
+    try {
+      if (window.__sih_current_lang && window.__sih_current_lang !== 'en') {
+        return window.__sih_current_lang;
+      }
+      const saved = localStorage.getItem('sih_selected_lang');
+      if (saved && saved !== 'en') {
+        return saved;
+      }
+      const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+      if (match && match[1]) {
+        const parts = match[1].split('/');
+        const code = parts[parts.length - 1];
+        if (code && code !== 'en' && code !== 'auto') return code;
+      }
+      const selectElem = document.querySelector('#google_translate_element_hidden select.goog-te-combo');
+      if (selectElem && selectElem.value && selectElem.value !== 'en') {
+        return selectElem.value;
+      }
+    } catch (e) {
+      console.warn('Lang detect error', e);
     }
+    return localStorage.getItem('sih_selected_lang') || 'en';
+  };
 
-    if (isPlayingAudio) {
+  const handleTogglePlayDetailedAudio = () => {
+    // 1. If currently playing, toggle Pause / Resume
+    if (isPlayingAudio && audioPlayerRef.current) {
       if (isPausedAudio) {
-        window.speechSynthesis.resume();
-        setIsPausedAudio(false);
+        audioPlayerRef.current
+          .play()
+          .then(() => setIsPausedAudio(false))
+          .catch((err) => console.warn('Resume error:', err));
       } else {
-        window.speechSynthesis.pause();
+        audioPlayerRef.current.pause();
         setIsPausedAudio(true);
       }
       return;
     }
 
-    // Stop any ongoing speech
-    window.speechSynthesis.cancel();
+    // 2. Fresh play: Stop existing audio
+    handleStopDetailedAudio();
 
-    // Prepare speech content: clean numbering for smooth reading
-    const textToRead = `${place.name}. Detailed heritage overview. ${place.description}. ${place.detailedDescription || ''}`;
-    const cleanText = textToRead.replace(/\d+\.\s*/g, '. ').replace(/[#*_]/g, '');
+    // Read live translated text from DOM (Google Translate injects <font> or <span> tags)
+    const openDescElem = document.getElementById('place-modal-description-text');
+    const fallbackDescElem = document.getElementById('place-modal-description-text-fallback');
+    const titleElem = document.getElementById('place-modal-title-text');
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'en-IN';
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-
-    utterance.onend = () => {
-      setIsPlayingAudio(false);
-      setIsPausedAudio(false);
+    const getCleanNodeText = (el) => {
+      if (!el) return '';
+      // Prefer innerText as it contains what Google Translate mutated in the DOM
+      return el.innerText ? el.innerText.trim() : (el.textContent ? el.textContent.trim() : '');
     };
 
-    utterance.onerror = () => {
-      setIsPlayingAudio(false);
-      setIsPausedAudio(false);
-    };
+    const titleText = getCleanNodeText(titleElem) || place.name || '';
+    
+    let descText = getCleanNodeText(openDescElem);
+    if (!descText || descText.length === 0) {
+      descText = getCleanNodeText(fallbackDescElem);
+    }
+    if (!descText || descText.length === 0) {
+      descText = place.detailedDescription || place.description || '';
+    }
+
+    const screenText = `${titleText}. ${descText}`.replace(/\s+/g, ' ').trim();
+    if (!screenText) return;
+
+    const currentLang = getActiveLanguage();
 
     setIsPlayingAudio(true);
     setIsPausedAudio(false);
-    window.speechSynthesis.speak(utterance);
+
+    // Fetch the audio blob via POST to avoid browser URL length and header size limits (fixes ERR_FAILED 431)
+    fetch('http://localhost:5001/api/tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: screenText,
+        lang: currentLang,
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`TTS server responded with status: ${res.status}`);
+        }
+        return res.blob();
+      })
+      .then((blob) => {
+        const audioBlobUrl = URL.createObjectURL(blob);
+        const audio = new Audio();
+        audio.src = audioBlobUrl;
+        audioPlayerRef.current = audio;
+
+        audio.onplay = () => {
+          setIsPlayingAudio(true);
+          setIsPausedAudio(false);
+        };
+
+        audio.onended = () => {
+          setIsPlayingAudio(false);
+          setIsPausedAudio(false);
+          URL.revokeObjectURL(audioBlobUrl);
+          audioPlayerRef.current = null;
+        };
+
+        audio.onerror = (err) => {
+          console.warn('Audio playback error:', err);
+          setIsPlayingAudio(false);
+          setIsPausedAudio(false);
+          URL.revokeObjectURL(audioBlobUrl);
+          audioPlayerRef.current = null;
+        };
+
+        return audio.play();
+      })
+      .catch((err) => {
+        console.warn('Detailed description audio error:', err);
+        setIsPlayingAudio(false);
+        setIsPausedAudio(false);
+        audioPlayerRef.current = null;
+      });
   };
 
-  const handleStopAudio = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+  const handleStopDetailedAudio = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
     }
     setIsPlayingAudio(false);
     setIsPausedAudio(false);
   };
+
+  // 3D Map / Satellite / Street View toggle ('none' | 'satellite' | 'map' | 'streetview')
+  const [activeMapView, setActiveMapView] = useState(null);
 
   // Timeline slider index
   const timelineItems = Array.isArray(place.visualTimeline) ? place.visualTimeline : [];
@@ -166,7 +248,7 @@ export default function PlaceDetailModal({
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               {place.tag || 'Heritage & Cultural Tourism'}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+            <h2 id="place-modal-title-text" className="text-2xl sm:text-3xl font-extrabold text-white mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
               {place.name}
             </h2>
             <div className="flex items-center gap-2 text-xs text-white/90 mt-1.5 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] font-medium">
@@ -184,7 +266,7 @@ export default function PlaceDetailModal({
             <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
               <span>About Destination</span>
             </h4>
-            <p className="text-sm text-slate-200 leading-relaxed">
+            <p id="place-modal-overview-text" className="text-sm text-slate-200 leading-relaxed">
               {place.description}
             </p>
           </div>
@@ -322,54 +404,88 @@ export default function PlaceDetailModal({
             </div>
           )}
 
-          {/* Comprehensive 50-Line Detailed Information (Interactive Collapsible Dropdown + Voice Reader) */}
-          {place.detailedDescription && (
-            <div className="rounded-2xl bg-slate-950/90 border border-slate-800 overflow-hidden transition-all duration-300">
-              <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
-                
-                {/* Accordion Click Area */}
-                <div
+          {/* Comprehensive Detailed Information (Interactive Collapsible Dropdown + Voice Reader) */}
+          <div className="rounded-2xl bg-slate-950/90 border border-slate-800 overflow-hidden transition-all duration-300">
+            <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
+              
+              {/* Accordion Click Area */}
+              <div
+                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                className="flex items-center gap-2.5 cursor-pointer flex-1 group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white group-hover:text-amber-400 transition flex items-center gap-1.5">
+                    <span>Detailed Description (In-Depth Heritage & Tourist Guide)</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {isDescriptionOpen ? 'Click to collapse text view' : 'Click to expand text / listen to audio guide in your selected language'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Dropdown Toggle Action Bar */}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {/* Read / Expand Button */}
+                <button
+                  type="button"
                   onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                  className="flex items-center gap-2.5 cursor-pointer flex-1 group"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700 transition cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                    <BookOpen className="w-4 h-4" />
+                  <span>{isDescriptionOpen ? 'Hide' : 'Read More'}</span>
+                  {isDescriptionOpen ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible Dropdown Body (Visible when Read More is expanded) */}
+            <div className={`px-5 pb-5 pt-3 border-t border-slate-800/80 transition-all duration-300 ${isDescriptionOpen ? 'block' : 'hidden'}`}>
+              
+              {/* Audio Control Bar inside the expanded descriptive information block */}
+              <div className="mb-4 p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                    <Volume2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white group-hover:text-amber-400 transition flex items-center gap-1.5">
-                      <span>Detailed Description (In-Depth Heritage & Tourist Guide)</span>
-                    </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {isDescriptionOpen ? 'Click to collapse text view' : 'Click to expand text / or listen to voice audio guide'}
-                    </p>
+                    <span className="text-xs font-bold text-slate-200 block">Voice Audio Narration</span>
+                    <span className="text-[10px] text-slate-400 block">Listen to this detailed guide in your selected language</span>
                   </div>
                 </div>
 
-                {/* Audio Reader & Dropdown Toggle Action Bar */}
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  {/* Listen Voice Audio Reader Button */}
+                <div className="flex items-center gap-2">
+                  {/* Listen Audio / Pause / Resume Button */}
                   <button
                     type="button"
-                    onClick={handleTogglePlayAudio}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePlayDetailedAudio();
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isPlayingAudio
                         ? isPausedAudio
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-amber-500/20 animate-pulse'
-                        : 'bg-slate-800 text-amber-400 hover:bg-slate-700 border border-slate-700'
+                          ? 'bg-amber-500 text-slate-950 shadow-amber-500/20 hover:bg-amber-400'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 animate-pulse'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-amber-500/20 active:scale-95'
                     }`}
-                    title="Listen to the complete heritage description in natural voice"
+                    title={isPlayingAudio ? (isPausedAudio ? 'Resume Audio' : 'Pause Audio') : 'Listen to this detailed guide'}
                   >
                     {isPlayingAudio ? (
                       isPausedAudio ? (
                         <>
-                          <Play className="w-3.5 h-3.5 fill-amber-400" />
-                          <span>Resume Audio</span>
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Resume</span>
                         </>
                       ) : (
                         <>
-                          <Pause className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
-                          <span>Pause Audio</span>
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                          <span>Pause</span>
                         </>
                       )
                     ) : (
@@ -380,44 +496,40 @@ export default function PlaceDetailModal({
                     )}
                   </button>
 
-                  {/* Stop Audio Button if Playing */}
+                  {/* Stop Audio Button */}
                   {isPlayingAudio && (
                     <button
                       type="button"
-                      onClick={handleStopAudio}
-                      className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 border border-slate-700 transition"
-                      title="Stop Audio Narration"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStopDetailedAudio();
+                      }}
+                      className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 transition cursor-pointer"
+                      title="Stop Audio"
                     >
-                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                   )}
-
-                  {/* Read / Expand Button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700 transition"
-                  >
-                    <span>{isDescriptionOpen ? 'Hide' : 'Read'}</span>
-                    {isDescriptionOpen ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </button>
                 </div>
               </div>
 
-              {/* Collapsible Dropdown Body */}
-              {isDescriptionOpen && (
-                <div className="px-5 pb-5 pt-1 border-t border-slate-800/80 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="text-xs text-slate-300 leading-loose space-y-3 font-normal whitespace-pre-line max-h-96 overflow-y-auto pr-2 custom-scrollbar mt-3">
-                    {place.detailedDescription}
-                  </div>
-                </div>
-              )}
+              {/* Full Detailed Description Text - Wrapped in stable span to prevent React reconciliation clashes with Google Translate DOM mutations */}
+              <div
+                id="place-modal-description-text"
+                className="text-xs text-slate-300 leading-loose space-y-3 font-normal whitespace-pre-line max-h-96 overflow-y-auto pr-2 custom-scrollbar"
+                suppressHydrationWarning
+              >
+                <span>
+                  {place.detailedDescription || place.description || 'Discover history, culture, architectural wonders, and travel advice for this destination.'}
+                </span>
+              </div>
             </div>
-          )}
+
+            {/* Permanent translated reference node for Google Translate */}
+            <div id="place-modal-description-text-fallback" className="sr-only" aria-hidden="true" suppressHydrationWarning>
+              <span>{place.detailedDescription || place.description || ''}</span>
+            </div>
+          </div>
 
           {/* Visual Timeline (Year-by-Year Slider) */}
           {timelineItems.length > 0 && currentTimelineEra && (

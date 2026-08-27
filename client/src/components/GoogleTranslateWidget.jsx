@@ -52,16 +52,30 @@ export default function GoogleTranslateWidget({ theme = 'dark' }) {
       }
     }
 
-    // Check existing language cookie if any
-    const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
-    if (match && match[1]) {
-      const code = match[1].split('/')[2];
-      if (code) setSelectedLang(code);
+    // Check existing language cookie or localStorage
+    const savedLang = localStorage.getItem('sih_selected_lang');
+    if (savedLang) {
+      setSelectedLang(savedLang);
+      window.__sih_current_lang = savedLang;
+    } else {
+      const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+      if (match && match[1]) {
+        const parts = match[1].split('/');
+        const code = parts[parts.length - 1];
+        if (code) {
+          setSelectedLang(code);
+          window.__sih_current_lang = code;
+          localStorage.setItem('sih_selected_lang', code);
+        }
+      }
     }
   }, []);
 
   const changeLanguage = (langCode) => {
     setSelectedLang(langCode);
+    window.__sih_current_lang = langCode;
+    localStorage.setItem('sih_selected_lang', langCode);
+    window.dispatchEvent(new CustomEvent('sih-language-changed', { detail: { lang: langCode } }));
     setIsOpen(false);
 
     // Set Google Translate cookie directly

@@ -10,6 +10,7 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import placeRoutes from './routes/placeRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
+import ttsRoutes from './routes/ttsRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/tts', ttsRoutes);
 
 // Health check route
 app.get('/', (req, res) => {
