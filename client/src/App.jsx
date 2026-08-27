@@ -142,11 +142,25 @@ export default function App() {
   };
 
   const handleUpdatePlace = async (id, updatedData) => {
+    // If already the full updated place returned from a specialized API (like review toggle/delete)
+    if (updatedData && updatedData._id && Array.isArray(updatedData.userReviews)) {
+      setPlacesList((prev) =>
+        prev.map((p) => ((p._id || p.id) === (updatedData._id || updatedData.id) ? updatedData : p))
+      );
+      if (selectedPlace && ((selectedPlace._id || selectedPlace.id) === (updatedData._id || updatedData.id))) {
+        setSelectedPlace(updatedData);
+      }
+      return;
+    }
+
     if (!currentAdmin?.token) return;
     const updated = await updatePlaceApi(id, updatedData, currentAdmin.token);
     setPlacesList((prev) =>
       prev.map((p) => ((p._id || p.id) === (updated._id || updated.id) ? updated : p))
     );
+    if (selectedPlace && ((selectedPlace._id || selectedPlace.id) === (updated._id || updated.id))) {
+      setSelectedPlace(updated);
+    }
   };
 
   const handleDeletePlace = async (placeId) => {
@@ -240,6 +254,15 @@ export default function App() {
     } finally {
       setIsSavingAiSite(false);
     }
+  };
+
+  // Callback when a user adds a review/rating
+  const handlePlaceReviewUpdate = (updatedPlace) => {
+    if (!updatedPlace) return;
+    setSelectedPlace(updatedPlace);
+    setPlacesList((prev) =>
+      prev.map((p) => ((p._id || p.id) === (updatedPlace._id || updatedPlace.id) ? updatedPlace : p))
+    );
   };
 
   return (
@@ -358,9 +381,11 @@ export default function App() {
         place={selectedPlace}
         onClose={() => setSelectedPlace(null)}
         isAdmin={!!currentAdmin}
+        currentUser={currentUser}
         onSaveToSiteInfo={handleSaveAiPlaceToSiteInfo}
         isSavingSite={isSavingAiSite}
         isSavedToSite={selectedPlace ? savedAiSiteIds.has(selectedPlace.name) : false}
+        onReviewAdded={handlePlaceReviewUpdate}
       />
 
       {/* 7. Auth / Role Modal (Connected to MongoDB with SMS OTP) */}

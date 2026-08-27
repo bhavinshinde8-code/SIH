@@ -29,9 +29,17 @@ import {
   Check,
   Database as DatabaseIcon,
   ImageOff,
-  Globe
+  Globe,
+  EyeOff
 } from 'lucide-react';
-import { fetchAdminUsersApi, getPlaceQrPreviewApi, generatePlaceQrApi, getPlaceQrDownloadUrl } from '../services/api';
+import {
+  fetchAdminUsersApi,
+  getPlaceQrPreviewApi,
+  generatePlaceQrApi,
+  getPlaceQrDownloadUrl,
+  togglePlaceReviewStatusApi,
+  deletePlaceReviewApi
+} from '../services/api';
 
 export default function AdminDashboard({
   places = [],
@@ -159,6 +167,51 @@ export default function AdminDashboard({
 
   // Safe Places array fallback
   const safePlaces = Array.isArray(places) ? places : [];
+
+  // Selected Place ID for detailed reviews inspection in Reviews Tab
+  const [selectedReviewPlaceId, setSelectedReviewPlaceId] = useState(null);
+  const [reviewActionLoadingId, setReviewActionLoadingId] = useState(null);
+
+  // Toggle review publish / hide status
+  const handleToggleReviewPublish = async (placeId, reviewId) => {
+    if (!adminUser?.token) {
+      alert('Admin authentication required.');
+      return;
+    }
+    try {
+      setReviewActionLoadingId(reviewId);
+      const res = await togglePlaceReviewStatusApi(placeId, reviewId, adminUser.token);
+      if (res?.place && onUpdatePlace) {
+        onUpdatePlace(placeId, res.place);
+      }
+    } catch (err) {
+      alert(`Error updating review status: ${err.message}`);
+    } finally {
+      setReviewActionLoadingId(null);
+    }
+  };
+
+  // Delete a specific user review
+  const handleDeleteReview = async (placeId, reviewId) => {
+    if (!adminUser?.token) {
+      alert('Admin authentication required.');
+      return;
+    }
+    if (!window.confirm('Are you sure you want to permanently delete this review?')) {
+      return;
+    }
+    try {
+      setReviewActionLoadingId(reviewId);
+      const res = await deletePlaceReviewApi(placeId, reviewId, adminUser.token);
+      if (res?.place && onUpdatePlace) {
+        onUpdatePlace(placeId, res.place);
+      }
+    } catch (err) {
+      alert(`Error deleting review: ${err.message}`);
+    } finally {
+      setReviewActionLoadingId(null);
+    }
+  };
 
   // Auto-select first site by default so the bottom panel is always visible immediately
   useEffect(() => {
@@ -1046,59 +1099,314 @@ export default function AdminDashboard({
               </div>
             )}
 
-            {/* TAB 4: REVIEWS (Live place reviews from MongoDB) */}
-            {activeTab === 'reviews' && (
-              <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-amber-400" />
-                      <span>Tourist Reviews & Rating Analytics</span>
-                    </h2>
-                    <p className="text-xs text-slate-400">Live aggregated reviews across all published places in MongoDB</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-amber-400 font-mono">
-                      {totalReviewsCount} Total Reviews
-                    </span>
-                    <p className="text-[11px] text-slate-400">Avg {averageRating} / 5.0 ★</p>
-                  </div>
-                </div>
+            {/* TAB 4: REVIEWS (Interactive Place List & User Reviews Inspection) */}
+            {activeTab === 'reviews' && (() => {
+              const activeReviewPlace = safePlaces.find(
+                (p) => (p._id || p.id) === selectedReviewPlaceId
+              );
 
-                <div className="space-y-3">
-                  {safePlaces.map((place) => (
-                    <div
-                      key={place._id || place.id}
-                      className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <img
-                          src={place.image}
-                          alt={place.name}
-                          className="w-12 h-12 rounded-xl object-cover"
-                        />
-                        <div>
-                          <h4 className="text-sm font-bold text-white">{place.name}</h4>
-                          <p className="text-xs text-slate-400">{place.location} • <span className="text-amber-400">{place.tag}</span></p>
+              return (
+                <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+                  {/* Top Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {selectedReviewPlaceId && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReviewPlaceId(null)}
+                            className="p-1.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-slate-300 hover:text-white transition"
+                            title="Back to All Places"
+                          >
+                            <ChevronRight className="w-4 h-4 rotate-180" />
+                          </button>
+                        )}
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-amber-400" />
+                          <span>
+                            {activeReviewPlace
+                              ? `User Reviews for "${activeReviewPlace.name}"`
+                              : 'Tourist Reviews & Rating Analytics'}
+                          </span>
+                        </h2>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {activeReviewPlace
+                          ? `Inspecting all ratings and feedback submitted by travelers for this destination.`
+                          : `Click any tourist destination below to inspect all reviews and 5-star ratings given by users.`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {selectedReviewPlaceId ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReviewPlaceId(null)}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>View All Places</span>
+                        </button>
+                      ) : (
+                        <div className="text-right">
+                          <span className="text-sm font-black text-amber-400 font-mono">
+                            {totalReviewsCount} Total Reviews
+                          </span>
+                          <p className="text-[11px] text-slate-400">Avg {averageRating} / 5.0 ★</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 1. Detail View: Showing reviews for selected place */}
+                  {selectedReviewPlaceId && activeReviewPlace ? (
+                    <div className="space-y-5 animate-in fade-in duration-200">
+                      {/* Destination Summary Card */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <img
+                            src={activeReviewPlace.image}
+                            alt={activeReviewPlace.name}
+                            className="w-14 h-14 rounded-2xl object-cover border border-slate-800 shrink-0"
+                          />
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                              {activeReviewPlace.tag}
+                            </span>
+                            <h3 className="text-base font-extrabold text-white">
+                              {activeReviewPlace.name}
+                            </h3>
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>{activeReviewPlace.location}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-800 self-stretch sm:self-auto justify-between sm:justify-end">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Score</span>
+                            <div className="flex items-center gap-1 text-amber-400 font-bold text-sm">
+                              <Star className="w-4 h-4 fill-amber-400" />
+                              <span>{activeReviewPlace.rating || 4.8} / 5.0</span>
+                            </div>
+                          </div>
+                          <div className="h-8 w-px bg-slate-800" />
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Reviews</span>
+                            <span className="text-xs font-mono font-bold text-white">
+                              {activeReviewPlace.reviews || 0} Count
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
-                            <Star className="w-3.5 h-3.5 fill-amber-400" />
-                            <span>{place.rating || 4.8} / 5.0</span>
+
+                      {/* Reviews List */}
+                      {Array.isArray(activeReviewPlace.userReviews) && activeReviewPlace.userReviews.length > 0 ? (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Submitted Traveler Reviews ({activeReviewPlace.userReviews.length})</span>
+                          </h4>
+
+                          <div className="grid grid-cols-1 gap-3">
+                            {activeReviewPlace.userReviews.map((rev, idx) => {
+                              const reviewId = rev._id || rev.id || idx;
+                              const isApproved = rev.isApproved !== false;
+                              const isLoading = reviewActionLoadingId === reviewId;
+
+                              return (
+                                <div
+                                  key={reviewId}
+                                  className={`p-4 rounded-2xl bg-slate-950 border transition space-y-3 ${
+                                    isApproved
+                                      ? 'border-slate-800 hover:border-slate-700'
+                                      : 'border-amber-500/30 bg-amber-950/10'
+                                  }`}
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                        {(rev.userName || 'T').charAt(0).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h5 className="text-xs font-bold text-white">
+                                            {rev.userName || 'Traveler'}
+                                          </h5>
+                                          {rev.userEmail && (
+                                            <span className="text-[10px] text-slate-400 font-normal">
+                                              ({rev.userEmail})
+                                            </span>
+                                          )}
+                                          <span
+                                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                                              isApproved
+                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                                : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                                            }`}
+                                          >
+                                            {isApproved ? '✓ Published on Card' : 'Hidden from Card'}
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-500">
+                                          {rev.createdAt ? new Date(rev.createdAt).toLocaleString() : 'Recent'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Star Rating Badge */}
+                                    <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                                      {Array.from({ length: 5 }).map((_, starI) => (
+                                        <Star
+                                          key={starI}
+                                          className={`w-3 h-3 ${
+                                            starI < (rev.rating || 5)
+                                              ? 'fill-amber-400 text-amber-400'
+                                              : 'text-slate-700'
+                                          }`}
+                                        />
+                                      ))}
+                                      <span className="text-xs font-bold text-amber-400 ml-1 font-mono">
+                                        {rev.rating || 5}.0
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Review text */}
+                                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-800/60 whitespace-pre-line">
+                                    "{rev.comment}"
+                                  </p>
+
+                                  {/* Admin Action Toolbar for this Review */}
+                                  <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-[10px] text-slate-500">
+                                      Moderate this user submission:
+                                    </span>
+
+                                    <div className="flex items-center gap-2">
+                                      {/* Publish / Hide Toggle */}
+                                      <button
+                                        type="button"
+                                        disabled={isLoading}
+                                        onClick={() => handleToggleReviewPublish(activeReviewPlace._id || activeReviewPlace.id, reviewId)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                          isApproved
+                                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                        }`}
+                                        title={isApproved ? 'Hide this review from the public card' : 'Publish this review on the public card'}
+                                      >
+                                        {isLoading ? (
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : isApproved ? (
+                                          <EyeOff className="w-3.5 h-3.5 text-amber-400" />
+                                        ) : (
+                                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                                        )}
+                                        <span>{isApproved ? 'Unpublish / Hide' : 'Publish to Card'}</span>
+                                      </button>
+
+                                      {/* Delete Review */}
+                                      <button
+                                        type="button"
+                                        disabled={isLoading}
+                                        onClick={() => handleDeleteReview(activeReviewPlace._id || activeReviewPlace.id, reviewId)}
+                                        className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-bold border border-rose-500/30 transition flex items-center gap-1.5 cursor-pointer"
+                                        title="Permanently remove this review"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                        <span>Delete Review</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <span className="text-[11px] text-slate-400 font-mono">{place.reviews || 0} reviews</span>
                         </div>
-                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">
-                          Active
-                        </span>
+                      ) : (
+                        <div className="p-12 text-center rounded-2xl bg-slate-950 border border-slate-800 text-slate-400 space-y-2">
+                          <MessageSquare className="w-8 h-8 mx-auto text-slate-600" />
+                          <h4 className="text-sm font-bold text-white">No user-submitted written reviews yet</h4>
+                          <p className="text-xs text-slate-500">
+                            This destination currently holds an aggregated score of {activeReviewPlace.rating || 4.8} ★ ({activeReviewPlace.reviews || 0} base reviews). New user reviews submitted on the card modal will show up here.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* 2. Overview: List of all Places on the portal with click-to-view */
+                    <div className="space-y-3">
+                      <div className="text-xs text-slate-400 flex items-center justify-between pb-1">
+                        <span>Showing {safePlaces.length} Destinations — Click any place card to view its user reviews</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3">
+                        {safePlaces.map((place) => {
+                          const placeId = place._id || place.id;
+                          const userRevCount = Array.isArray(place.userReviews) ? place.userReviews.length : 0;
+
+                          return (
+                            <div
+                              key={placeId}
+                              onClick={() => setSelectedReviewPlaceId(placeId)}
+                              className="group p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-950/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer shadow-md"
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <img
+                                  src={place.image}
+                                  alt={place.name}
+                                  className="w-13 h-13 rounded-2xl object-cover bg-slate-800 shrink-0 border border-slate-800 group-hover:scale-105 transition-transform"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                                      {place.name}
+                                    </h4>
+                                    {userRevCount > 0 && (
+                                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/30">
+                                        {userRevCount} New Review{userRevCount > 1 ? 's' : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-400 truncate mt-0.5">
+                                    {place.location} • <span className="text-amber-400">{place.tag}</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-4 self-end sm:self-center shrink-0">
+                                <div className="text-right">
+                                  <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
+                                    <Star className="w-3.5 h-3.5 fill-amber-400" />
+                                    <span>{place.rating || 4.8} / 5.0</span>
+                                  </div>
+                                  <span className="text-[11px] text-slate-400 font-mono">
+                                    {place.reviews || 0} total ({userRevCount} written)
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedReviewPlaceId(placeId);
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 group-hover:bg-amber-500 text-slate-300 group-hover:text-slate-950 font-bold text-xs border border-slate-800 group-hover:border-amber-500 transition flex items-center gap-1"
+                                >
+                                  <span>View Reviews</span>
+                                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* TAB 5: USERS INFO (Real Registered Traveler Accounts from MongoDB Atlas) */}
             {activeTab === 'users' && (

@@ -29,18 +29,23 @@ import {
   Eye,
   Layers,
   Map as MapIcon,
+  MessageSquare,
+  Send,
+  ThumbsUp,
+  User as UserIcon,
 } from 'lucide-react';
+import { addPlaceReviewApi } from '../services/api';
 
 export default function PlaceDetailModal({
   place,
   onClose,
   isAdmin = false,
+  currentUser = null,
   onSaveToSiteInfo,
   isSavingSite = false,
-  isSavedToSite = false
+  isSavedToSite = false,
+  onReviewAdded,
 }) {
-  if (!place) return null;
-
   // Detailed Description accordion/dropdown toggle state
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
 
@@ -52,6 +57,30 @@ export default function PlaceDetailModal({
   const [isPausedAudio, setIsPausedAudio] = useState(false);
   const audioPlayerRef = React.useRef(null);
 
+  // 3D Map / Satellite / Street View toggle ('none' | 'satellite' | 'map' | 'streetview')
+  const [activeMapView, setActiveMapView] = useState(null);
+
+  // Timeline slider index
+  const [timelineIndex, setTimelineIndex] = useState(0);
+
+  // Rating & Review form state
+  const [selectedRating, setSelectedRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewerName, setReviewerName] = useState(currentUser?.name || '');
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState('');
+  const [reviewErrorMsg, setReviewErrorMsg] = useState('');
+  // Dropdown toggle to expand/collapse user reviews list
+  const [isReviewsDropdownOpen, setIsReviewsDropdownOpen] = useState(false);
+
+  // Keep reviewerName synced with currentUser if logged in
+  useEffect(() => {
+    if (currentUser?.name && !reviewerName) {
+      setReviewerName(currentUser.name);
+    }
+  }, [currentUser]);
+
   // Cleanup audio on modal close or unmount
   useEffect(() => {
     return () => {
@@ -61,6 +90,12 @@ export default function PlaceDetailModal({
       }
     };
   }, []);
+
+  if (!place) return null;
+
+  const timelineItems = Array.isArray(place.visualTimeline) ? place.visualTimeline : [];
+  const nearbyPlaces = Array.isArray(place.nearbyPlaces) ? place.nearbyPlaces : [];
+  const coRelatedPlaces = Array.isArray(place.coRelatedPlaces) ? place.coRelatedPlaces : [];
 
   const getActiveLanguage = () => {
     try {
@@ -196,17 +231,6 @@ export default function PlaceDetailModal({
     setIsPausedAudio(false);
   };
 
-  // 3D Map / Satellite / Street View toggle ('none' | 'satellite' | 'map' | 'streetview')
-  const [activeMapView, setActiveMapView] = useState(null);
-
-  // Timeline slider index
-  const timelineItems = Array.isArray(place.visualTimeline) ? place.visualTimeline : [];
-  const [timelineIndex, setTimelineIndex] = useState(0);
-
-  // Nearby & Co-related places
-  const nearbyPlaces = Array.isArray(place.nearbyPlaces) ? place.nearbyPlaces : [];
-  const coRelatedPlaces = Array.isArray(place.coRelatedPlaces) ? place.coRelatedPlaces : [];
-
   // Determine web URL if available or generate search URL
   const destinationWebUrl =
     place.webUrl ||
@@ -217,6 +241,73 @@ export default function PlaceDetailModal({
   )}`;
 
   const currentTimelineEra = timelineItems[timelineIndex] || null;
+
+  // Handle Review submission
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) {
+      setReviewErrorMsg('Please write a short review or feedback message.');
+      return;
+    }
+
+    const placeId = place._id || place.id;
+    if (!placeId) {
+      setReviewErrorMsg('Unable to identify place ID.');
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      setReviewErrorMsg('');
+      setReviewSuccessMsg('');
+
+      const res = await addPlaceReviewApi(placeId, {
+        rating: selectedRating,
+        comment: reviewComment.trim(),
+        userName: reviewerName.trim() || 'Traveler',
+        userEmail: currentUser?.email || '',
+      });
+
+      if (res?.place) {
+        if (onReviewAdded) {
+          onReviewAdded(res.place);
+        }
+      } else {
+        // Fallback optimistic update if backend returns single review
+        const updatedReviews = [
+          {
+            userName: reviewerName.trim() || 'Traveler',
+            rating: selectedRating,
+            comment: reviewComment.trim(),
+            createdAt: new Date().toISOString(),
+          },
+          ...(place.userReviews || [])
+        ];
+        const newCount = (place.reviews || 100) + 1;
+        const newRating = Number((((place.rating || 4.8) * (newCount - 1) + selectedRating) / newCount).toFixed(1));
+        const updated = {
+          ...place,
+          rating: newRating,
+          reviews: newCount,
+          userReviews: updatedReviews
+        };
+        if (onReviewAdded) {
+          onReviewAdded(updated);
+        }
+      }
+
+      setReviewSuccessMsg('🎉 Thank you! Your rating & review has been posted.');
+      setReviewComment('');
+      setTimeout(() => {
+        setReviewSuccessMsg('');
+      }, 4000);
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      setReviewErrorMsg(err.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -747,6 +838,243 @@ export default function PlaceDetailModal({
                 <ExternalLink className="w-3 h-3 text-slate-400" />
               </a>
             </div>
+          </div>
+
+          {/* 5-Star Rating & Traveler Review Section */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+              <div>
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>Rate & Review This Destination</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Share your 5-star experience, historical tips, or feedback with fellow travelers.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 self-start sm:self-auto">
+                <span className="text-xs font-bold text-slate-300">Overall Rating:</span>
+                <div className="flex items-center gap-1 text-amber-400 font-bold text-xs">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <span>{place.rating || '4.8'}</span>
+                  <span className="text-slate-500 font-normal">({place.reviews || '100'})</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Review Form */}
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              {/* Star Rating Picker */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Select Rating: <span className="text-amber-400 font-extrabold">{hoverRating || selectedRating} / 5 Stars</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const isFilled = (hoverRating || selectedRating) >= star;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-1 text-2xl transition-transform hover:scale-125 focus:outline-none cursor-pointer"
+                        title={`${star} Star${star > 1 ? 's' : ''}`}
+                      >
+                        <Star
+                          className={`w-7 h-7 transition-colors ${
+                            isFilled
+                              ? 'text-amber-400 fill-amber-400 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                              : 'text-slate-600 hover:text-slate-500'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                  <span className="text-xs text-slate-400 font-medium ml-2">
+                    {selectedRating === 5 && '🌟 Excellent / Must Visit'}
+                    {selectedRating === 4 && '👍 Very Good'}
+                    {selectedRating === 3 && '👌 Good'}
+                    {selectedRating === 2 && '👎 Fair'}
+                    {selectedRating === 1 && '⚠️ Needs Improvement'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Name & Review Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Your Name / Traveler Alias
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      value={reviewerName}
+                      onChange={(e) => setReviewerName(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 focus:border-amber-500 text-xs text-white placeholder:text-slate-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Your Experience & Tips <span className="text-rose-400">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Write about the architecture, best visiting time, photography spots, or guide tips..."
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 focus:border-amber-500 text-xs text-white placeholder:text-slate-600 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Error and Success Alerts */}
+              {reviewErrorMsg && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                  ⚠️ {reviewErrorMsg}
+                </div>
+              )}
+
+              {reviewSuccessMsg && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold animate-in fade-in">
+                  {reviewSuccessMsg}
+                </div>
+              )}
+
+              {/* Submit Review Button */}
+              <div className="flex items-center justify-end">
+                <button
+                  type="submit"
+                  disabled={isSubmittingReview || !reviewComment.trim()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isSubmittingReview ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting Review...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Post Review & Rating</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* List of Recent Traveler Reviews (Interactive Collapsible Dropdown) */}
+            {(() => {
+              const visibleReviews = (Array.isArray(place.userReviews) ? place.userReviews : []).filter(
+                (rev) => rev && rev.isApproved !== false
+              );
+
+              return (
+                <div className="pt-4 border-t border-slate-800/80 space-y-3">
+                  {/* Reviews Dropdown Header / Toggle Button */}
+                  <div
+                    onClick={() => setIsReviewsDropdownOpen(!isReviewsDropdownOpen)}
+                    className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 flex items-center justify-between gap-3 cursor-pointer group transition duration-200"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-white group-hover:text-amber-400 transition flex items-center gap-2">
+                          <span>Traveler Reviews ({visibleReviews.length})</span>
+                          {visibleReviews.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-mono text-[10px] font-bold">
+                              ★ {place.rating || '4.8'}
+                            </span>
+                          )}
+                        </h5>
+                        <p className="text-[11px] text-slate-400">
+                          {isReviewsDropdownOpen
+                            ? 'Click to collapse and hide reviews'
+                            : visibleReviews.length > 0
+                            ? `Click to view ${visibleReviews.length} traveler review${visibleReviews.length > 1 ? 's' : ''} & ratings`
+                            : 'No written reviews yet — be the first to leave one!'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsReviewsDropdownOpen(!isReviewsDropdownOpen);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-semibold border border-slate-700 transition"
+                    >
+                      <span>{isReviewsDropdownOpen ? 'Hide Reviews' : 'View Reviews'}</span>
+                      {isReviewsDropdownOpen ? (
+                        <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Collapsible Dropdown Content */}
+                  {isReviewsDropdownOpen && (
+                    <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
+                      {visibleReviews.length === 0 ? (
+                        <div className="p-6 text-center rounded-xl bg-slate-900/50 border border-dashed border-slate-800 text-slate-400 text-xs">
+                          💬 No traveler reviews submitted for this destination yet. Use the form above to post your review!
+                        </div>
+                      ) : (
+                        visibleReviews.map((rev, index) => (
+                          <div
+                            key={index}
+                            className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+                                  {(rev.userName || 'T').charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-xs font-bold text-slate-200">
+                                  {rev.userName || 'Traveler'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1 text-amber-400 text-xs font-bold">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`w-3 h-3 ${
+                                      i < (rev.rating || 5)
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-slate-700'
+                                    }`}
+                                  />
+                                ))}
+                                <span className="text-[10px] text-slate-500 ml-1">
+                                  {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : 'Recent'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-slate-300 leading-relaxed pl-8 whitespace-pre-line">
+                              "{rev.comment}"
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800">

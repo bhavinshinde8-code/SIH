@@ -25,6 +25,16 @@ const placeSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
+    userReviews: [
+      {
+        userName: { type: String, default: 'Traveler' },
+        userEmail: { type: String, default: '' },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        comment: { type: String, required: true },
+        isApproved: { type: Boolean, default: true },
+        createdAt: { type: Date, default: Date.now },
+      }
+    ],
     location: {
       type: String,
       required: true,

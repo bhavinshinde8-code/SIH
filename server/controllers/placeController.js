@@ -56,7 +56,6 @@ export const createPlace = async (req, res) => {
       coRelatedPlaces,
     } = req.body;
 
-    // Normalize and sanitize historyContent array to guarantee schema objects
     const sanitizedHistoryContent = Array.isArray(historyContent)
       ? historyContent
           .map((item) => {
@@ -78,7 +77,6 @@ export const createPlace = async (req, res) => {
           .filter(Boolean)
       : [];
 
-    // Normalize visualTimeline array
     const sanitizedVisualTimeline = Array.isArray(visualTimeline)
       ? visualTimeline
           .map((item) => {
@@ -95,7 +93,6 @@ export const createPlace = async (req, res) => {
           .filter(Boolean)
       : [];
 
-    // Normalize nearbyPlaces array
     const sanitizedNearbyPlaces = Array.isArray(nearbyPlaces)
       ? nearbyPlaces
           .map((item) => {
@@ -112,7 +109,6 @@ export const createPlace = async (req, res) => {
           .filter(Boolean)
       : [];
 
-    // Normalize coRelatedPlaces array
     const sanitizedCoRelatedPlaces = Array.isArray(coRelatedPlaces)
       ? coRelatedPlaces
           .map((item) => {
@@ -149,9 +145,6 @@ export const createPlace = async (req, res) => {
       visualTimeline: sanitizedVisualTimeline,
       nearbyPlaces: sanitizedNearbyPlaces,
       coRelatedPlaces: sanitizedCoRelatedPlaces,
-      // Auto-generate the QR code value the moment a site is created, so an
-      // admin never has to remember a separate "generate QR" step — the
-      // Download QR button on the edit screen works immediately.
       qrCodeValue: buildQrValue(name),
       createdBy: req.admin._id,
     });
@@ -286,12 +279,10 @@ export const deletePlace = async (req, res) => {
     const targetId = req.params.id;
     let place = null;
 
-    // Check if valid 24-character hex MongoDB ObjectId
     if (/^[0-9a-fA-F]{24}$/.test(targetId)) {
       place = await Place.findById(targetId);
     }
 
-    // Fallback: lookup by name or custom id field if not found by ObjectId
     if (!place) {
       place = await Place.findOne({
         $or: [
@@ -324,7 +315,6 @@ export const generateLivePlace = async (req, res) => {
 
     const cleanQuery = query.trim();
 
-    // 1. First check if this place already exists in MongoDB Atlas
     const existing = await Place.findOne({
       $or: [
         { name: { $regex: new RegExp(`^${cleanQuery}$`, 'i') } },
@@ -340,11 +330,9 @@ export const generateLivePlace = async (req, res) => {
       });
     }
 
-    // 2. Dynamically import AI service to generate full structured data
     const { generateTouristPlaceWithAI } = await import('../services/aiPlaceService.js');
     const generatedData = await generateTouristPlaceWithAI(cleanQuery);
 
-    // 3. Attach a unique runtime ID without writing/saving to MongoDB database
     const livePlace = {
       _id: `ai_${Date.now()}`,
       ...generatedData,
@@ -361,68 +349,68 @@ export const generateLivePlace = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // @desc    Generate (or regenerate) a QR code for a place
 // @route   POST /api/places/:id/qr
 // @access  Private (Admin only)
 export const generatePlaceQr = async (req, res) => {
   try {
     const place = await Place.findById(req.params.id);
- 
+
     if (!place) {
       return res.status(404).json({ message: 'Place not found' });
     }
- 
+
     place.qrCodeValue = buildQrValue(place.name);
     const updatedPlace = await place.save();
- 
+
     const qrDataUrl = await generateQrDataUrl(updatedPlace.qrCodeValue);
- 
     res.json({ place: updatedPlace, qrDataUrl });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
- 
+
 // @desc    Get a base64 QR preview for a place that already has a QR value
 // @route   GET /api/places/:id/qr/preview
 // @access  Public
 export const getPlaceQrPreview = async (req, res) => {
   try {
     const place = await Place.findById(req.params.id);
- 
+
     if (!place) {
       return res.status(404).json({ message: 'Place not found' });
     }
- 
+
     if (!place.qrCodeValue) {
       return res.status(400).json({ message: 'This place has no QR code yet' });
     }
- 
+
     const qrDataUrl = await generateQrDataUrl(place.qrCodeValue);
     res.json({ qrDataUrl });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
- 
+
 // @desc    Download a place's QR code as a PNG file
 // @route   GET /api/places/:id/qr/download
 // @access  Public
 export const downloadPlaceQr = async (req, res) => {
   try {
     const place = await Place.findById(req.params.id);
- 
+
     if (!place) {
       return res.status(404).json({ message: 'Place not found' });
     }
- 
+
     if (!place.qrCodeValue) {
       return res.status(400).json({ message: 'This place has no QR code yet' });
     }
- 
+
     const buffer = await generateQrBuffer(place.qrCodeValue);
     const filename = place.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
- 
+
     res.set({
       'Content-Type': 'image/png',
       'Content-Disposition': `attachment; filename="${filename}-qr.png"`,
@@ -432,23 +420,167 @@ export const downloadPlaceQr = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
- 
+
+// @desc    Add review and rating to a place
+// @route   POST /api/places/:id/reviews
+// @access  Public
+export const addPlaceReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment, userName, userEmail } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Please provide a valid rating between 1 and 5 stars.' });
+    }
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ message: 'Please enter a review comment.' });
+    }
+
+    let place = null;
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      place = await Place.findById(id);
+    }
+
+    if (!place) {
+      place = await Place.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${id}$`, 'i') } },
+          { id: id }
+        ]
+      });
+    }
+
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+
+    if (!Array.isArray(place.userReviews)) {
+      place.userReviews = [];
+    }
+
+    const newReview = {
+      userName: (userName && userName.trim()) || 'Traveler',
+      userEmail: (userEmail && userEmail.trim()) || '',
+      rating: Number(rating),
+      comment: comment.trim(),
+      isApproved: true,
+      createdAt: new Date()
+    };
+
+    place.userReviews.unshift(newReview);
+
+    const baseCount = (place.reviews && place.reviews > 0) ? place.reviews : 1;
+    const currentBaseRating = place.rating || 4.8;
+    const updatedAvgRating = ((currentBaseRating * baseCount + Number(rating)) / (baseCount + 1)).toFixed(1);
+    
+    place.rating = parseFloat(updatedAvgRating);
+    place.reviews = baseCount + 1;
+
+    const updatedPlace = await place.save();
+    res.status(201).json({
+      message: 'Review submitted successfully!',
+      place: updatedPlace,
+      review: newReview
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Toggle review publish/approved status (Admin only)
+// @route   PUT /api/places/:placeId/reviews/:reviewId/toggle
+// @access  Private (Admin only)
+export const togglePlaceReviewStatus = async (req, res) => {
+  try {
+    const { placeId, reviewId } = req.params;
+    let place = null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(placeId)) {
+      place = await Place.findById(placeId);
+    }
+    if (!place) {
+      place = await Place.findOne({
+        $or: [{ name: { $regex: new RegExp(`^${placeId}$`, 'i') } }, { id: placeId }]
+      });
+    }
+
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+
+    const review = place.userReviews?.id ? place.userReviews.id(reviewId) : place.userReviews?.find(r => (r._id?.toString() === reviewId || r.id === reviewId));
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    review.isApproved = review.isApproved === false ? true : false;
+    const updatedPlace = await place.save();
+
+    res.json({
+      message: `Review ${review.isApproved ? 'published' : 'hidden'} successfully!`,
+      place: updatedPlace,
+      review
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete a user review from a place (Admin only)
+// @route   DELETE /api/places/:placeId/reviews/:reviewId
+// @access  Private (Admin only)
+export const deletePlaceReview = async (req, res) => {
+  try {
+    const { placeId, reviewId } = req.params;
+    let place = null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(placeId)) {
+      place = await Place.findById(placeId);
+    }
+    if (!place) {
+      place = await Place.findOne({
+        $or: [{ name: { $regex: new RegExp(`^${placeId}$`, 'i') } }, { id: placeId }]
+      });
+    }
+
+    if (!place) {
+      return res.status(404).json({ message: 'Place not found' });
+    }
+
+    if (!Array.isArray(place.userReviews)) {
+      return res.status(404).json({ message: 'No reviews found on this place' });
+    }
+
+    place.userReviews = place.userReviews.filter(
+      (r) => r._id?.toString() !== reviewId && r.id !== reviewId
+    );
+
+    const updatedPlace = await place.save();
+    res.json({
+      message: 'Review deleted successfully from destination!',
+      place: updatedPlace
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Resolve a scanned QR value to its place (used by the QR scanner)
 // @route   GET /api/places/qr/lookup/:value
 // @access  Public
 export const lookupPlaceByQr = async (req, res) => {
   try {
     const { value } = req.params;
- 
+
     const place = await Place.findOne({ qrCodeValue: value, isPublished: true });
- 
+
     if (!place) {
       return res.status(404).json({ message: 'No place found for that QR code.' });
     }
- 
+
     res.json(place);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-

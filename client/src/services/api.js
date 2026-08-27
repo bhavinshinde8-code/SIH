@@ -246,6 +246,56 @@ export const generateLivePlaceApi = async (query) => {
   return data;
 };
 
+// Add 5-star rating & review for a place
+export const addPlaceReviewApi = async (placeId, reviewData) => {
+  const response = await fetch(`${API_URL}/places/${encodeURIComponent(placeId)}/reviews`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(reviewData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to submit review');
+  }
+  return data;
+};
+
+// Toggle Review Publish / Approval Status (Admin only)
+export const togglePlaceReviewStatusApi = async (placeId, reviewId, token) => {
+  const response = await fetch(`${API_URL}/places/${encodeURIComponent(placeId)}/reviews/${encodeURIComponent(reviewId)}/toggle`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update review status');
+  }
+  return data;
+};
+
+// Delete a Review from a destination (Admin only)
+export const deletePlaceReviewApi = async (placeId, reviewId, token) => {
+  const response = await fetch(`${API_URL}/places/${encodeURIComponent(placeId)}/reviews/${encodeURIComponent(reviewId)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to delete review');
+  }
+  return data;
+};
+
 // ==========================================
 // 4. User Search & Travel History Database APIs
 // ==========================================
