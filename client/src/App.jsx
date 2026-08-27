@@ -22,8 +22,8 @@ import {
 } from './services/api';
 
 export default function App() {
-  // Theme state: dark by default, persists in localStorage
-  const [theme, setTheme] = useState(() => localStorage.getItem('sih_theme') || 'dark');
+  // Theme state: light by default on first visit, persists user choice in localStorage
+  const [theme, setTheme] = useState(() => localStorage.getItem('sih_theme') || 'light');
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
